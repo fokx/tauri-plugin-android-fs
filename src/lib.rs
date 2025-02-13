@@ -315,7 +315,7 @@ pub trait AndroidFs {
     fn public_storage(&self) -> &impl PublicStorage;
 
     /// File storage API intended to be shared with other apps.
-    #[deprecated(note = "This is type. Use `public_storage` instead.")]
+    #[deprecated(note = "This is typo. Use `public_storage` instead.")]
     #[warn(deprecated)]
     fn pubic_storage(&self) -> &impl PublicStorage;
 
