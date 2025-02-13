@@ -1,0 +1,21 @@
+[package]
+name = "tauri-plugin-android-fs"
+version = "1.0.0"
+edition = "2021"
+links = "tauri-plugin-android-fs"
+exclude = ["target"]
+license = "MIT OR Apache-2.0"
+keywords = ["tauri", "android", "file", "fs", "dialog"]
+authors = ["OkaYu"]
+description = "Android file system API for Tauri."
+repository = "https://github.com/aiueo13/tauri-plugin-android-fs"
+
+[dependencies]
+tauri = "2"
+serde = "1"
+thiserror = "2"
+anyhow = "1"
+tauri-plugin-fs = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
