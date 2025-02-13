@@ -4,7 +4,7 @@
 //! This plugin was created to provide explicit and consistent file operations.  
 //! No special permission or configuration is required.  
 //!
-//! # Set
+//! # Setup
 //! All you need to do is register the core plugin with Tauri: 
 //!
 //! `src-tauri/src/lib.rs`
