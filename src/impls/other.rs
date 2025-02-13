@@ -63,6 +63,10 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
 		Err(crate::Error::NotAndroid)
 	}
 
+	fn public_storage(&self) -> &impl crate::PublicStorage {
+		self
+	}
+
 	fn pubic_storage(&self) -> &impl crate::PublicStorage {
 		self
 	}
