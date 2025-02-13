@@ -132,6 +132,15 @@ pub trait AndroidFs {
     /// All Android version.
     fn get_file_name(&self, path: &FilePath) -> crate::Result<String>;
 
+    /// Get the mime type.  
+    /// If the type is unknown, this returns None.  
+    /// 
+    /// `FilePath` can be obtained from functions such as `AndroidFs::show_open_file_dialog`, `AndroidFs::show_open_visual_media_dialog`, or `AndroidFs::show_save_file_dialog`.  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn get_mime_type(&self, path: &FilePath) -> crate::Result<Option<String>>;
+
     /// Open a file in read-only mode.
     /// 
     /// If you only need to read the entire file contents, consider using `AndroidFs::read`  or `AndroidFs::read_to_string` instead.  
@@ -233,10 +242,6 @@ pub trait AndroidFs {
     /// This is more user-friendly than `AndroidFs::show_open_file_dialog`.  
     ///
     /// # Note
-    /// Even if the file is an image, if the Android system does not recognize it as an *image*, it will not be possible to select that format. 
-    /// Major formats like PNG, JPEG, WebP, and GIF are generally supported, but minor formats are often not.  
-    /// The same applies to videos.  
-    /// 
     /// The file obtained from this function cannot retrieve the correct file name using `AndroidFs::get_file_name`.
     /// Instead, it will be assigned a sequential number, such as 1000091523.png.  
     /// <https://issuetracker.google.com/issues/268079113>  
@@ -369,7 +374,6 @@ pub trait PublicStorage {
     /// # Note
     /// Do not set a non-image type to `mime_type`, as it may result in an error. 
     /// Even if the type is an image, if the Android system does not recognize it as such, an error will occur. 
-    /// Major formats like PNG, JPEG, WebP, Avif, Tiff, and GIF are supported, but minor formats are often not.  
     /// 
     /// Do not save files directly in the base directory. 
     /// Please specify a subdirectory in the `relative_path_with_sub_dir`, such as `appName/file.png` or `appName/2025-2-11/file.png`. 

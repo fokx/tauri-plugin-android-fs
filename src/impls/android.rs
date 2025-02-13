@@ -53,6 +53,18 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
+    fn get_mime_type(&self, path: &FilePath) -> crate::Result<Option<String>> {
+        impl_serde!(struct Req { path: String });
+        impl_serde!(struct Res { value: Option<String> });
+
+        let path = path.to_string();
+
+        self.0  
+            .run_mobile_plugin::<Res>("getMimeType", Req { path })
+            .map(|v| v.value)
+            .map_err(Into::into)
+    }
+
     fn open_file(&self, path: &FilePath) -> crate::Result<std::fs::File> {
         self.open_file_with_mode(path, "r")
     }

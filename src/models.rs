@@ -1,9 +1,16 @@
 use serde::{Deserialize, Serialize};
 
+/// Filters for `VisualMediaPicker`.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum VisualMediaTarget {
+
+	/// Allow only images to be selected.  
 	ImageOnly,
+
+	/// Allow only videos to be selected.  
 	VideoOnly,
+
+	/// Allow only images and videos to be selected.  
 	ImageAndVideo
 }
 
@@ -107,12 +114,17 @@ pub enum PublicAudioDir {
 	Recordings,
 }
 
+/// Directory in which to place files that are available to the user.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PublicGeneralPurposeDir {
 
+	/// Standard directory in which to place documents that have been created by the user.  
+	/// 
 	/// ex: `~/Documents`
 	Documents,
 
+	/// Standard directory in which to place files that have been downloaded by the user.  
+	/// 
 	/// ex: `~/Download`
 	Download,
 }

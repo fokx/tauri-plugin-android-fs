@@ -70,6 +70,11 @@ class SavePublicFileBeforeWriteArgs {
 }
 
 @InvokeArg
+class GetMimeTypeArgs {
+    lateinit var path: String
+}
+
+@InvokeArg
 class SavePublicFileAfterWriteArgs {
     lateinit var path: String
 }
@@ -112,6 +117,22 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
         }
         catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke getPrivateBaseDirAbsolutePaths."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun getMimeType(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(GetMimeTypeArgs::class.java)
+            val type = activity.contentResolver.getType(Uri.parse(args.path))
+            val res = JSObject()
+            res.put("value", type)
+            invoke.resolve(res)
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke getMimeType."
             Logger.error(message)
             invoke.reject(message)
         }

@@ -24,6 +24,10 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
 		Err(crate::Error::NotAndroid)
 	}
 
+	fn get_mime_type(&self, _path: &FilePath) -> crate::Result<Option<String>> {
+		Err(crate::Error::NotAndroid)
+	}
+
 	fn open_file(&self, _path: &FilePath) -> crate::Result<File> {
 		Err(crate::Error::NotAndroid)
 	}
