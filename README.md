@@ -4,6 +4,21 @@ The Android file system is strict and complex because its behavior and the avail
 This plugin was created to provide explicit and consistent file operations.
 No special permission or configuration is required.  
 
+# Set
+All you need to do is register the core plugin with Tauri: 
+
+`src-tauri/src/lib.rs`
+
+```
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_android_fs::init()) // This
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
 # Usage
 There are three main ways to manipulate files:
 
