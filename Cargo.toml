@@ -1,14 +1,17 @@
 [package]
 name = "tauri-plugin-android-fs"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
+rust-version = "1.77.2"
 links = "tauri-plugin-android-fs"
 exclude = ["target"]
+build = "build.rs"
 license = "MIT OR Apache-2.0"
 keywords = ["tauri", "android", "file", "fs", "dialog"]
 authors = ["OkaYu"]
 description = "Android file system API for Tauri."
 repository = "https://github.com/aiueo13/tauri-plugin-android-fs"
+readme = "README.md"
 
 [dependencies]
 tauri = "2"
