@@ -9,7 +9,7 @@
 //!
 //! `src-tauri/src/lib.rs`
 //!
-//! ```ignore
+//! ```no_run
 //! #[cfg_attr(mobile, tauri::mobile_entry_point)]
 //! pub fn run() {
 //!    tauri::Builder::default()
@@ -25,7 +25,7 @@
 //! ### 1. Dialog
 //! Opens the file picker to read and write user-selected files.
 //!
-//! ```
+//! ```no_run
 //! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, VisualMediaTarget};
 //!
 //! fn read_files(app: tauri::AppHandle) {
@@ -59,7 +59,7 @@
 //! ### 2. Public Storage
 //! File storage intended to be shared with other apps and user.
 //!
-//! ```
+//! ```no_run
 //! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicImageDir, PublicStorage};
 //!
 //! fn example(app: tauri::AppHandle) {
@@ -78,7 +78,7 @@
 //! ### 3. Private Storage
 //! File storage intended for the app’s use only.
 //!
-//! ```
+//! ```no_run
 //! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PrivateDir, PrivateStorage};
 //!
 //! fn example(app: tauri::AppHandle) {
@@ -239,7 +239,7 @@ pub trait AndroidFs {
     /// 
     /// The file obtained from this function cannot retrieve the correct file name using `AndroidFs::get_file_name`.
     /// Instead, it will be assigned a sequential number, such as 1000091523.png.  
-    /// https://issuetracker.google.com/issues/268079113  
+    /// <https://issuetracker.google.com/issues/268079113>  
     ///  
     /// # Support
     /// This is available on devices that meet the following criteria:
@@ -566,7 +566,7 @@ pub trait PrivateStorage {
     /// The returned path may change over time if the calling app is moved to an adopted storage device, so only relative paths should be persisted.   
     /// 
     /// # Examples
-    /// ```
+    /// ```no_run
     /// use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PrivateDir, PrivateStorage};
     /// 
     /// fn example(app: tauri::AppHandle) {
