@@ -312,6 +312,11 @@ pub trait AndroidFs {
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool>;
 
     /// File storage API intended to be shared with other apps.
+    fn public_storage(&self) -> &impl PublicStorage;
+
+    /// File storage API intended to be shared with other apps.
+    #[deprecated(note = "Use `public_storage` instead.")]
+    #[warn(deprecated)]
     fn pubic_storage(&self) -> &impl PublicStorage;
 
     /// File storage API intended for the app’s use only.
