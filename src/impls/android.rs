@@ -110,7 +110,11 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
-    fn pubic_storage(&self) -> &impl PublicStorage {
+    fn public_storage(&self) -> &impl crate::PublicStorage {
+        self
+    }
+
+    fn pubic_storage(&self) -> &impl crate::PublicStorage {
         self
     }
 
