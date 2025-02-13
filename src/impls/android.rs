@@ -69,7 +69,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         self.open_file_with_mode(path, "r")
     }
 
-    fn open_file_writable(&self, path: &FilePath) -> crate::Result<std::fs::File> {
+    fn create_file(&self, path: &FilePath) -> crate::Result<std::fs::File> {
         self.open_file_with_mode(path, "w")
     }
 
@@ -123,10 +123,6 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
     }
 
     fn public_storage(&self) -> &impl crate::PublicStorage {
-        self
-    }
-
-    fn pubic_storage(&self) -> &impl crate::PublicStorage {
         self
     }
 

@@ -177,7 +177,7 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
             invoke.reject(message)
         }
     }
-
+    
     @Command
     fun showOpenFileDialog(invoke: Invoke) {
         try {

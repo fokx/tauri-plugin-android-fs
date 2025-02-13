@@ -48,7 +48,7 @@
 //!     let selected_path = api.show_save_file_dialog("fileName", Some("image/png")).unwrap();
 //!
 //!     if let Some(path) = selected_path {
-//!         let mut file: std::fs::File = api.open_file_writable(&path).unwrap();
+//!         let mut file: std::fs::File = api.create_file(&path).unwrap();
 //!     }
 //!     else {
 //!         // Handle cancellation
@@ -57,7 +57,7 @@
 //! ```
 //!
 //! ### 2. Public Storage
-//! File storage intended to be shared with other apps and user.
+//! File storage that is available to other applications and users.
 //!
 //! ```no_run
 //! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicImageDir, PublicStorage};
@@ -151,7 +151,16 @@ pub trait AndroidFs {
     /// All Android version.
     fn open_file(&self, path: &FilePath) -> crate::Result<std::fs::File>;
 
-    /// Open a file in writable mode from ***writable*** `FilePath`.
+    /// This is deprecated. Because inappropriate fn name.  
+    /// Use `AndroidFs::create_file` insted. 
+    #[deprecated(note = "Because inappropriate fn name. Use `AndroidFs::create_file` insted.")]
+    #[warn(deprecated)]
+    fn open_file_writable(&self, path: &FilePath) -> crate::Result<std::fs::File> {
+        self.create_file(path)
+    }
+
+    /// Opens a file in write-only mode from ***writable*** `FilePath`.  
+    /// This function will create a file if it does not exist, and will truncate it if it does.  
     /// 
     /// If you only need to write the contents, consider using `AndroidFs::write`  instead.  
     /// 
@@ -161,7 +170,7 @@ pub trait AndroidFs {
     /// 
     /// # Support
     /// All Android version.
-    fn open_file_writable(&self, path: &FilePath) -> crate::Result<std::fs::File>;
+    fn create_file(&self, path: &FilePath) -> crate::Result<std::fs::File>;
 
     /// Reads the entire contents of a file into a bytes vector.  
     /// 
@@ -201,9 +210,10 @@ pub trait AndroidFs {
         Ok(buf)
     }
 
-    /// Writes a slice as the entire contents of a file in a **writable** `FilePath`
+    /// Writes a slice as the entire contents of a file in a **writable** `FilePath`.  
+    /// This function will create a file if it does not exist, and will entirely replace its contents if it does.  
     /// 
-    /// If you need to operate on a writable file, use `AndroidFs::open_file_writable` instead.  
+    /// If you want to write to a file, use `AndroidFs::create_file` instead.  
     /// 
     /// # Note
     /// A **writable** `FilePath` can be obtained from `AndroidFs::show_save_file_dialog`, 
@@ -212,7 +222,7 @@ pub trait AndroidFs {
     /// # Support
     /// All Android version.
     fn write(&self, path: &FilePath, contetns: impl AsRef<[u8]>) -> crate::Result<()> {
-        let mut file = self.open_file_writable(path)?;
+        let mut file = self.create_file(path)?;
         file.write_all(contetns.as_ref())?;
         Ok(())
     }
@@ -266,7 +276,7 @@ pub trait AndroidFs {
     /// When a file does not need to be accessed by other applications and users, consider using  `PrivateStorage::write`.  
     /// These are easier because the destination does not need to be selected in a dialog.  
     /// 
-    /// If you want to operate directly on writable files, use `AndroidFs::show_save_file_dialog`  then `AndroidFs::open_file_writable` insted.  
+    /// If you want to write to a file, use `AndroidFs::show_save_file_dialog`  then `AndroidFs::create_file` insted.  
     /// 
     /// # Note
     /// `mime_type`  specify the type of the target file to be saved. 
@@ -319,20 +329,23 @@ pub trait AndroidFs {
     /// File storage API intended to be shared with other apps.
     fn public_storage(&self) -> &impl PublicStorage;
 
-    /// File storage API intended to be shared with other apps.
+    /// This is typo and deprecated.  
+    /// Use `public_storage` instead.
     #[deprecated(note = "This is typo. Use `public_storage` instead.")]
     #[warn(deprecated)]
-    fn pubic_storage(&self) -> &impl PublicStorage;
+    fn pubic_storage(&self) -> &impl PublicStorage {
+        self.public_storage()
+    }
 
     /// File storage API intended for the app’s use only.
     fn private_storage(&self) -> &impl PrivateStorage;
 }
 
-/// File storage API intended to be shared with other apps.  
+/// File storage that is available to other applications and users.
 pub trait PublicStorage {
 
     /// Save the contents to public storage.  
-    /// This is used when saving a file for access by other applications and user.  
+    /// This is used when saving a file for access by other applications and users.  
     /// 
     /// When storing media files such as images, videos, and audio, consider using `PublicStorage::write_image` or a similar method.  
     /// For saving a general-purpose file, it is often better to use `AndroidFs::open_save_file_dialog`.  
@@ -365,7 +378,7 @@ pub trait PublicStorage {
     }
 
     /// Save the contents as an image file to public storage.  
-    /// This is used when saving a file for access by other applications and user.  
+    /// This is used when saving a file for access by other applications and users.  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
@@ -398,7 +411,7 @@ pub trait PublicStorage {
     }
 
     /// Save the contents as an video file to public storage.  
-    /// This is used when saving a file for access by other applications and user.  
+    /// This is used when saving a file for access by other applications and users.  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
@@ -431,7 +444,7 @@ pub trait PublicStorage {
     }
 
     /// Save the contents as an audio file to public storage.  
-    /// This is used when saving a file for access by other applications and user.  
+    /// This is used when saving a file for access by other applications and users.  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
@@ -558,7 +571,7 @@ pub trait PublicStorage {
     fn is_recordings_dir_available(&self) -> crate::Result<bool>;
 }
 
-/// File storage API intended for the app’s use only.  
+/// File storage intended for the app’s use only.  
 pub trait PrivateStorage {
 
     /// Get the absolute path of the specified directory.  
@@ -661,6 +674,26 @@ pub trait PrivateStorage {
 
         let path = self.resolve_path_with(base_dir, relative_path)?;
         Ok(std::fs::File::open(path)?)
+    }
+
+    /// Opens a file in write-only mode.  
+    /// This function will create a file if it does not exist, and will truncate it if it does.
+    /// 
+    /// If you only need to write the contents, consider using `PrivateStorage::write`  instead.  
+    /// 
+    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::File::create`.  
+    /// See `PrivateStorage::resolve_path` for details.  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn create_file(
+        &self,
+        base_dir: PrivateDir, 
+        relative_path: impl AsRef<str>, 
+    ) -> crate::Result<std::fs::File> {
+
+        let path = self.resolve_path_with(base_dir, relative_path)?;
+        Ok(std::fs::File::create(path)?)
     }
 
     /// Reads the entire contents of a file into a bytes vector.  

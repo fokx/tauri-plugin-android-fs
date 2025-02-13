@@ -15,6 +15,7 @@ pub enum VisualMediaTarget {
 }
 
 /// The application specific directory.  
+// TODO: Add #[non_exhaustive] from version 2.0.0
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PrivateDir {
 
@@ -38,8 +39,9 @@ pub enum PrivateDir {
 	Cache,
 }
 
-/// Directory in which to place images that are available to the user.  
+/// Directory in which to place images that are available to other applications and users.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+// TODO: Add #[non_exhaustive] from version 2.0.0
 pub enum PublicImageDir {
 
 	/// Standard directory in which to place pictures that are available to the user.  
@@ -53,7 +55,8 @@ pub enum PublicImageDir {
 	DCIM,
 }
 
-/// Directory in which to place videos that are available to the user.  
+/// Directory in which to place videos that are available to other applications and users.  
+// TODO: Add #[non_exhaustive] from version 2.0.0
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PublicVideoDir {
 
@@ -68,7 +71,8 @@ pub enum PublicVideoDir {
 	DCIM,
 }
 
-/// Directory in which to place audios that are available to the user.  
+/// Directory in which to place audios that are available to other applications and users.  
+// TODO: Add #[non_exhaustive] from version 2.0.0
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PublicAudioDir {
 
@@ -114,7 +118,8 @@ pub enum PublicAudioDir {
 	Recordings,
 }
 
-/// Directory in which to place files that are available to the user.  
+/// Directory in which to place files that are available to other applications and users.  
+// TODO: Add #[non_exhaustive] from version 2.0.0
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PublicGeneralPurposeDir {
 

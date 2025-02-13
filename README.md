@@ -47,7 +47,7 @@ fn write_file(app: tauri::AppHandle) {
     let selected_path = api.show_save_file_dialog("fileName", Some("image/png")).unwrap();
 
     if let Some(path) = selected_path {
-        let mut file: std::fs::File = api.open_file_writable(&path).unwrap();
+        let mut file: std::fs::File = api.create_file(&path).unwrap();
     } else {
         // Handle cancellation
     }
@@ -55,7 +55,7 @@ fn write_file(app: tauri::AppHandle) {
 ```
 
 ### 2. Public Storage
-File storage intended to be shared with other apps and user.
+File storage that is available to other applications and users.
 
 ```
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicImageDir, PublicStorage};

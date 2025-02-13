@@ -32,7 +32,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
 		Err(crate::Error::NotAndroid)
 	}
 
-	fn open_file_writable(&self, _path: &FilePath) -> crate::Result<std::fs::File> {
+	fn create_file(&self, _path: &FilePath) -> crate::Result<std::fs::File> {
 		Err(crate::Error::NotAndroid)
 	}
 
@@ -68,10 +68,6 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
 	}
 
 	fn public_storage(&self) -> &impl crate::PublicStorage {
-		self
-	}
-
-	fn pubic_storage(&self) -> &impl crate::PublicStorage {
 		self
 	}
 
