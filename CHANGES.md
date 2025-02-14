@@ -1,9 +1,12 @@
+# Version 1.3.2
+- Update documents.
+
 # Version 1.3.1
 - Update documents.
 
 # Version 1.3.0
 - Deprecate `AndroidFs::open_file_writable`.
-- Add `AndroidFs::create_file`.
+- Add [`AndroidFs::create_file`].
 - Add `PrivateStorage::create_file`.
 - Update documents.
 

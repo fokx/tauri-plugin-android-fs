@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Filters for `VisualMediaPicker`.
+/// Filters for VisualMediaPicker.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum VisualMediaTarget {
 
@@ -89,7 +89,7 @@ pub enum PublicAudioDir {
 	/// Standard directory in which to place any audio files that should be in the list of audiobooks that the user can select (not as regular music).  
 	/// 
 	/// This is not available on Android 9 (API level 28) and lower.  
-    /// Availability on a given device can be verified by calling `PublicStorage::is_audiobooks_dir_available`.  
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_audiobooks_dir_available`](crate::PublicStorage::is_audiobooks_dir_available).  
 	/// 
 	/// ex: `~/Audiobooks`  
 	Audiobooks,
@@ -112,7 +112,7 @@ pub enum PublicAudioDir {
 	/// Standard directory in which to place any audio files that should be in the list of voice recordings recorded by voice recorder apps that the user can select (not as regular music).   
 	/// 
 	/// This is not available on Android 11 (API level 30) and lower.  
-    /// Availability on a given device can be verified by calling `PublicStorage::is_recordings_dir_available`.  
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_recordings_dir_available`](crate::PublicStorage::is_recordings_dir_available).  
 	/// 
 	/// ex: `~/Recordings`
 	Recordings,

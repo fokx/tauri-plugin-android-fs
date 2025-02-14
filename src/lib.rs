@@ -30,28 +30,36 @@
 //!
 //! fn read_files(app: tauri::AppHandle) {
 //!     let api = app.android_fs();
-//!     let selected_paths = api.show_open_file_dialog(&["*/*"], true).unwrap();
+//!     let selected_paths = api.show_open_file_dialog(
+//!         &["*/*"], // Target MIME types
+//!         true // Allow multiple files
+//!     ).unwrap();
 //!
 //!     if selected_paths.is_empty() {
-//!         // Handle cancellation
+//!         // Handle cancel
 //!     }
 //!     else {
 //!         for path in selected_paths {
 //!             let file_name = api.get_file_name(&path).unwrap();
 //!             let file: std::fs::File = api.open_file(&path).unwrap();
+//!             // Handle read-only file
 //!         }
 //!     }
 //! }
 //!
 //! fn write_file(app: tauri::AppHandle) {
 //!     let api = app.android_fs();
-//!     let selected_path = api.show_save_file_dialog("fileName", Some("image/png")).unwrap();
+//!     let selected_path = api.show_save_file_dialog(
+//!         "fileName", // Initial file name
+//!         Some("image/png") // Target MIME type
+//!     ).unwrap();
 //!
 //!     if let Some(path) = selected_path {
 //!         let mut file: std::fs::File = api.create_file(&path).unwrap();
+//!         // Handle write-only file
 //!     }
 //!     else {
-//!         // Handle cancellation
+//!         // Handle cancel
 //!     }
 //! }
 //! ```
@@ -66,10 +74,11 @@
 //!     let api = app.android_fs().public_storage();
 //!     let contents: Vec<u8> = todo!();
 //!
+//!     // Write a PNG image
 //!     api.write_image(
-//!         PublicImageDir::Pictures,
-//!         "myApp/2025-02-13.png",
-//!         Some("image/png"),
+//!         PublicImageDir::Pictures, // Base directory
+//!         "myApp/2025-02-13.png", // Relative file path
+//!         Some("image/png"), // MIME type
 //!         &contents
 //!     ).unwrap();
 //! }
@@ -83,13 +92,20 @@
 //!
 //! fn example(app: tauri::AppHandle) {
 //!     let api = app.android_fs().private_storage();
+//!     let contents: Vec<u8> = todo!();
 //!
-//!     // Write data
-//!     api.write(PrivateDir::Data, "config/data1.txt", "data").unwrap();
+//!     // Write contents
+//!     api.write(
+//!         PrivateDir::Data, // Base directory
+//!         "config/data1", // Relative file path
+//!         &contents
+//!     ).unwrap();
 //!
-//!     // Read data
-//!     let data = api.read_to_string(PrivateDir::Data, "config/data1.txt").unwrap();
-//!     assert_eq!(data, "data");
+//!     // Read contents
+//!     let contents = api.read(
+//!         PrivateDir::Data, // Base directory
+//!         "config/data1" // Relative file path
+//!     ).unwrap();
 //! }
 //! ```
 //!
@@ -105,8 +121,13 @@ use std::io::{Read, Write};
 pub use models::*;
 pub use error::{Error, Result, PathError};
 pub use impls::{AndroidFsExt, init};
-pub use tauri_plugin_fs::FilePath;
 
+/// This is [`tauri_plugin_fs::FilePath`] for compatibility.  
+/// 
+/// # Note
+/// In this crate, functions that take this as an argument will work correctly if it is the value returned by a function within this crate, at a minimum.
+/// And [`FilePath::Path(_)`](tauri_plugin_fs::FilePath::Path) will not work.
+pub type FilePath = tauri_plugin_fs::FilePath;
 
 /// API
 pub trait AndroidFs {
@@ -126,16 +147,17 @@ pub trait AndroidFs {
 
     /// Get the file name.  
     /// 
-    /// `FilePath` can be obtained from functions such as `AndroidFs::show_open_file_dialog`, `AndroidFs::show_open_visual_media_dialog`, or `AndroidFs::show_save_file_dialog`.  
+    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`], or [`AndroidFs::show_save_file_dialog`].  
     /// 
     /// # Support
     /// All Android version.
     fn get_file_name(&self, path: &FilePath) -> crate::Result<String>;
 
     /// Get the mime type.  
-    /// If the type is unknown, this returns None.  
+    /// If the type is unknown, this returns None. 
+    /// And this mime type might differ from the file name extension.  
     /// 
-    /// `FilePath` can be obtained from functions such as `AndroidFs::show_open_file_dialog`, `AndroidFs::show_open_visual_media_dialog`, or `AndroidFs::show_save_file_dialog`.  
+    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`], or [`AndroidFs::show_save_file_dialog`].  
     /// 
     /// # Support
     /// All Android version.
@@ -143,17 +165,17 @@ pub trait AndroidFs {
 
     /// Open a file in read-only mode.
     /// 
-    /// If you only need to read the entire file contents, consider using `AndroidFs::read`  or `AndroidFs::read_to_string` instead.  
+    /// If you only need to read the entire file contents, consider using [`AndroidFs::read`] or [`AndroidFs::read_to_string`] instead.  
     /// 
-    /// `FilePath` can be obtained from functions such as `AndroidFs::show_open_file_dialog` or `AndroidFs::show_open_visual_media_dialog`.  
+    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
     /// All Android version.
     fn open_file(&self, path: &FilePath) -> crate::Result<std::fs::File>;
 
     /// This is deprecated. Because inappropriate fn name.  
-    /// Use `AndroidFs::create_file` insted. 
-    #[deprecated(note = "Because inappropriate fn name. Use `AndroidFs::create_file` insted.")]
+    /// Use [`AndroidFs::create_file`] insted.
+    #[deprecated(note = "Because inappropriate fn name. Use AndroidFs::create_file insted.")]
     #[warn(deprecated)]
     fn open_file_writable(&self, path: &FilePath) -> crate::Result<std::fs::File> {
         self.create_file(path)
@@ -162,11 +184,11 @@ pub trait AndroidFs {
     /// Opens a file in write-only mode from ***writable*** `FilePath`.  
     /// This function will create a file if it does not exist, and will truncate it if it does.  
     /// 
-    /// If you only need to write the contents, consider using `AndroidFs::write`  instead.  
+    /// If you only need to write the contents, consider using [`AndroidFs::write`] instead.  
     /// 
     /// # Note
-    /// A **writable** `FilePath` can be obtained from `AndroidFs::show_save_file_dialog`, 
-    /// but not from `AndroidFs::show_open_file_dialog` or `AndroidFs::show_open_visual_media_dialog`.
+    /// A **writable** `FilePath` can be obtained from [`AndroidFs::show_save_file_dialog`], 
+    /// but NOT from [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].
     /// 
     /// # Support
     /// All Android version.
@@ -174,9 +196,9 @@ pub trait AndroidFs {
 
     /// Reads the entire contents of a file into a bytes vector.  
     /// 
-    /// If you need to operate on a readable file, use `AndroidFs::open_file` instead.  
+    /// If you need to operate on a readable file, use [`AndroidFs::open_file`] instead.  
     /// 
-    /// `FilePath` can be obtained from functions such as `AndroidFs::show_open_file_dialog` or `AndroidFs::show_open_visual_media_dialog`.  
+    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
     /// All Android version.
@@ -193,9 +215,9 @@ pub trait AndroidFs {
 
     /// Reads the entire contents of a file into a string.  
     /// 
-    /// If you need to operate on a readable file, use `AndroidFs::open_file` instead.  
+    /// If you need to operate on a readable file, use [`AndroidFs::open_file`] instead.  
     /// 
-    /// `FilePath` can be obtained from functions such as `AndroidFs::show_open_file_dialog` or `AndroidFs::show_open_visual_media_dialog`.  
+    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
     /// All Android version.
@@ -213,11 +235,11 @@ pub trait AndroidFs {
     /// Writes a slice as the entire contents of a file in a **writable** `FilePath`.  
     /// This function will create a file if it does not exist, and will entirely replace its contents if it does.  
     /// 
-    /// If you want to write to a file, use `AndroidFs::create_file` instead.  
+    /// If you want to write to a file, use [`AndroidFs::create_file`] instead.  
     /// 
     /// # Note
-    /// A **writable** `FilePath` can be obtained from `AndroidFs::show_save_file_dialog`, 
-    /// but not from `AndroidFs::show_open_file_dialog` or `AndroidFs::show_visual_media_dialog`.
+    /// A **writable** `FilePath` can be obtained from [`AndroidFs::show_save_file_dialog`], 
+    /// but not from [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].
     /// 
     /// # Support
     /// All Android version.
@@ -230,7 +252,7 @@ pub trait AndroidFs {
     /// Open a dialog for file selection.  
     /// This returns a **readonly** `FilePath`  vec. If no file is selected or canceled by user, it is an empty vec.  
     /// 
-    /// For images and videos, consider using `AndroidFs::show_open_visiual_media_dialog`  instead.  
+    /// For images and videos, consider using [`AndroidFs::show_open_visual_media_dialog`] instead.  
     /// 
     /// # Note
     /// `mime_types` represents the types of files that should be selected. 
@@ -247,13 +269,13 @@ pub trait AndroidFs {
     ) -> crate::Result<Vec<FilePath>>;
 
     /// Opens a dialog for media file selection, such as images and videos.  
-    /// This returns a **readonly** `FilePath`  vec. If no file is selected or canceled by user, it is an empty vec.  
+    /// This returns a **readonly** `FilePath` vec. If no file is selected or canceled by user, it is an empty vec.  
     /// 
-    /// This is more user-friendly than `AndroidFs::show_open_file_dialog`.  
+    /// This is more user-friendly than [`AndroidFs::show_open_file_dialog`].  
     ///
     /// # Note
-    /// The file obtained from this function cannot retrieve the correct file name using `AndroidFs::get_file_name`.
-    /// Instead, it will be assigned a sequential number, such as 1000091523.png.  
+    /// The file obtained from this function cannot retrieve the correct file name using [`AndroidFs::get_file_name`].
+    /// Instead, it will be assigned a sequential number, such as `1000091523.png`.  
     /// <https://issuetracker.google.com/issues/268079113>  
     ///  
     /// # Support
@@ -261,8 +283,8 @@ pub trait AndroidFs {
     ///  - Run Android 11 (API level 30) or higher
     ///  - Receive changes to Modular System Components through Google System Updates
     ///  
-    /// Availability on a given device can be verified by calling `is_visual_media_dialog_available`.  
-    /// If not supported, this functions the same as `AndroidFs::show_open_file_dialog`.
+    /// Availability on a given device can be verified by calling [`AndroidFs::is_visual_media_dialog_available`].  
+    /// If not supported, this functions the same as [`AndroidFs::show_open_file_dialog`].
     fn show_open_visual_media_dialog(
         &self,
         target: VisualMediaTarget,
@@ -272,11 +294,11 @@ pub trait AndroidFs {
     /// Open a dialog for file saving, and write contents to the selected file, then return that path.    
     /// This returns a **writable** `FilePath` . If canceled by the user, return None, and do not write it.  
     /// 
-    /// When storing media files such as images, videos, and audio, consider using `PublicStorage::write_image` or a similar method.  
-    /// When a file does not need to be accessed by other applications and users, consider using  `PrivateStorage::write`.  
+    /// When storing media files such as images, videos, and audio, consider using [`PublicStorage::write_image`] or a similar method.  
+    /// When a file does not need to be accessed by other applications and users, consider using [`PrivateStorage::write`].  
     /// These are easier because the destination does not need to be selected in a dialog.  
     /// 
-    /// If you want to write to a file, use `AndroidFs::show_save_file_dialog`  then `AndroidFs::create_file` insted.  
+    /// If you want to write to a file, use [`AndroidFs::show_save_file_dialog`]  then [`AndroidFs::create_file`] insted.  
     /// 
     /// # Note
     /// `mime_type`  specify the type of the target file to be saved. 
@@ -302,11 +324,11 @@ pub trait AndroidFs {
     /// Open a dialog for file saving, and return the selected path.  
     /// This returns a **writable** `FilePath` . If canceled by the user, return None.  
     /// 
-    /// When storing media files such as images, videos, and audio, consider using `PublicStorage::write_image` or a similar method.  
-    /// When a file does not need to be accessed by other applications and users, consider using  `PrivateStorage::write`.  
+    /// When storing media files such as images, videos, and audio, consider using [`PublicStorage::write_image`] or a similar method.  
+    /// When a file does not need to be accessed by other applications and users, consider using  [`PrivateStorage::write`].  
     /// These are easier because the destination does not need to be selected in a dialog.  
     /// 
-    /// If you only need to write contents, use `AndroidFs::show_save_file_dialog_with_contents` instead.  
+    /// If you only need to write contents, use [`AndroidFs::show_save_file_dialog_with_contents`] instead.  
     /// 
     /// # Note
     /// `mime_type` specify the type of the target file to be saved. 
@@ -320,7 +342,7 @@ pub trait AndroidFs {
         mime_type: Option<&str>,
     ) -> crate::Result<Option<FilePath>>;
 
-    /// Verify whether `AndroidFs::show_open_visual_media_dialog` is available on a given device.
+    /// Verify whether [`AndroidFs::show_open_visual_media_dialog`] is available on a given device.
     /// 
     /// # Support
     /// All Android version.
@@ -330,8 +352,8 @@ pub trait AndroidFs {
     fn public_storage(&self) -> &impl PublicStorage;
 
     /// This is typo and deprecated.  
-    /// Use `public_storage` instead.
-    #[deprecated(note = "This is typo. Use `public_storage` instead.")]
+    /// Use [`AndroidFs::public_storage`] instead.
+    #[deprecated(note = "This is typo. Use AndroidFs::public_storage instead.")]
     #[warn(deprecated)]
     fn pubic_storage(&self) -> &impl PublicStorage {
         self.public_storage()
@@ -347,12 +369,12 @@ pub trait PublicStorage {
     /// Save the contents to public storage.  
     /// This is used when saving a file for access by other applications and users.  
     /// 
-    /// When storing media files such as images, videos, and audio, consider using `PublicStorage::write_image` or a similar method.  
-    /// For saving a general-purpose file, it is often better to use `AndroidFs::open_save_file_dialog`.  
+    /// When storing media files such as images, videos, and audio, consider using [`PublicStorage::write_image`] or a similar method.  
+    /// For saving a general-purpose file, it is often better to use [`AndroidFs::show_save_file_dialog`].  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on a write-only file, use `PublicStorage::write_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use [`PublicStorage::write_with_contents_writer`] insted.  
     /// 
     /// # Note
     /// Do not save files directly in the base directory. 
@@ -382,7 +404,7 @@ pub trait PublicStorage {
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on a write-only file, use `PublicStorage::write_image_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use [`PublicStorage::write_image_with_contents_writer`] insted.  
     /// 
     /// # Note
     /// Do not set a non-image type to `mime_type`, as it may result in an error. 
@@ -415,14 +437,14 @@ pub trait PublicStorage {
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on a write-only file, use `PublicStorage::write_video_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use [`PublicStorage::write_video_with_contents_writer`] insted.  
     /// 
     /// # Note
     /// Do not set a non-video type to `mime_type`, as it may result in an error. 
     /// Even if the type is an video, an error will occur if the Android system does not recognize the type or contents as an video.   
     /// 
     /// Do not save files directly in the base directory. 
-    /// Please specify a subdirectory in the `relative_path_with_sub_dir, such as `appName/file.mp4` or `appName/2025-2-11/file.mp4`. 
+    /// Please specify a subdirectory in the `relative_path_with_sub_dir`, such as `appName/file.mp4` or `appName/2025-2-11/file.mp4`. 
     /// Do not use `file.mp4`.  
     /// 
     /// # Support
@@ -448,7 +470,7 @@ pub trait PublicStorage {
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on a write-only file, use `PublicStorage::write_audio_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use [`PublicStorage::write_audio_with_contents_writer`] insted.  
     /// 
     /// # Note
     /// Do not set a non-audio type to `mime_type`, as it may result in an error. 
@@ -459,11 +481,11 @@ pub trait PublicStorage {
     /// Do not use `file.mp3`.  
     /// 
     /// # Support
-    /// `PublicAudioDir::Audiobooks` is not available on Android 9 (API level 28) and lower.  
-    /// Availability on a given device can be verified by calling `PublicStorage::is_audiobooks_dir_available`.  
+    /// [`PublicAudioDir::Audiobooks`] is not available on Android 9 (API level 28) and lower.  
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_audiobooks_dir_available`].  
     /// 
-    /// `PublicAudioDir::Recordings` is not available on Android 11 (API level 30) and lower.  
-    /// Availability on a given device can be verified by calling `PublicStorage::is_recordings_dir_available`.  
+    /// [`PublicAudioDir::Recordings`] is not available on Android 11 (API level 30) and lower.  
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_recordings_dir_available`].  
     /// 
     /// Others are available in all Android versions.  
     fn write_audio(
@@ -482,13 +504,13 @@ pub trait PublicStorage {
         )
     }
 
-    /// See ``PublicStorage::write`` for description.
+    /// See [`PublicStorage::write`] for description.
     ///
     /// # Note
     /// The file provided in `contents_writer` is write-only.
     /// 
     /// # Examples
-    /// The following is equivalent to `PublicStorage::write`.  
+    /// The following is equivalent to [`PublicStorage::write`].  
     /// ```ignore
     /// self.write_with_contents_writer(
     ///     base_dir,
@@ -505,13 +527,13 @@ pub trait PublicStorage {
         contents_writer: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>
     ) -> crate::Result<FilePath>;
 
-    /// See ``PublicStorage::write_image`` for description.
+    /// See [`PublicStorage::write_image`] for description.
     ///
    /// # Note
     /// The file provided in `contents_writer` is write-only.
     /// 
     /// # Examples
-    /// The following is equivalent to `PublicStorage::write_image`.  
+    /// The following is equivalent to [`PublicStorage::write_image`].  
     /// ```ignore
     /// self.write_image_with_contents_writer(
     ///     base_dir,
@@ -528,13 +550,13 @@ pub trait PublicStorage {
         contents_writer: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>
     ) -> crate::Result<FilePath>;
 
-    /// See ``PublicStorage::write_video`` for description.
+    /// See [`PublicStorage::write_video`] for description.
     ///
     /// # Note
     /// The file provided in `contents_writer` is write-only.
     /// 
     /// # Examples
-    /// The following is equivalent to `PublicStorage::write_video`.  
+    /// The following is equivalent to [`PublicStorage::write_video`].  
     /// ```ignore
     /// self.write_video_with_contents_writer(
     ///     base_dir,
@@ -551,13 +573,13 @@ pub trait PublicStorage {
         contents_writer: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>
     ) -> crate::Result<FilePath>;
 
-    /// See ``PublicStorage::write_audio`` for description.
+    /// See [`PublicStorage::write_audio`] for description.
     ///
     /// # Note
     /// The file provided in `contents_writer` is write-only.
     /// 
     /// # Examples
-    /// The following is equivalent to `PublicStorage::write_audio`.  
+    /// The following is equivalent to [`PublicStorage::write_audio`].  
     /// ```ignore
     /// self.write_audio_with_contents_writer(
     ///     base_dir,
@@ -574,13 +596,13 @@ pub trait PublicStorage {
         contents_writer: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>
     ) -> crate::Result<FilePath>;
 
-    /// Verify whether `PublicAudioDir::Audiobooks` is available on a given device.
+    /// Verify whether [`PublicAudioDir::Audiobooks`] is available on a given device.
     /// 
     /// # Support
     /// All Android version.
     fn is_audiobooks_dir_available(&self) -> crate::Result<bool>;
 
-    /// Verify whether `PublicAudioDir::Recordings` is available on a given device.
+    /// Verify whether [`PublicAudioDir::Recordings`] is available on a given device.
     /// 
     /// # Support
     /// All Android version.
@@ -594,7 +616,7 @@ pub trait PrivateStorage {
     /// Apps require no extra permissions to read or write to the returned path, since this path lives in their private storage.  
     ///
     /// These files will be deleted when the app is uninstalled and may also be deleted at the user’s request. 
-    /// When using `PrivateDir::Cache`, the system will automatically delete files in this directory as disk space is needed elsewhere on the device.   
+    /// When using [`PrivateDir::Cache`], the system will automatically delete files in this directory as disk space is needed elsewhere on the device.   
     /// 
     /// The returned path may change over time if the calling app is moved to an adopted storage device, so only relative paths should be persisted.   
     /// 
@@ -630,7 +652,7 @@ pub trait PrivateStorage {
     /// Get the absolute path of the specified relative path and base directory.  
     /// Apps require no extra permissions to read or write to the returned path, since this path lives in their private storage.  
     ///
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -650,8 +672,8 @@ pub trait PrivateStorage {
     /// This function will create a file if it does not exist, and will entirely replace its contents if it does.  
     /// Recursively create parent directories if they are missing.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` , `std::fs::create_dir_all` , and `std::fs::write`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] , [`std::fs::create_dir_all`], and [`std::fs::write`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -675,10 +697,10 @@ pub trait PrivateStorage {
 
     /// Open a file in read-only mode.  
     /// 
-    /// If you only need to read the entire file contents, consider using `PrivateStorage::read`  or `PrivateStorage::read_to_string` instead.  
+    /// If you only need to read the entire file contents, consider using [`PrivateStorage::read`]  or [`PrivateStorage::read_to_string`] instead.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::File::open`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::File::open`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -695,10 +717,10 @@ pub trait PrivateStorage {
     /// Opens a file in write-only mode.  
     /// This function will create a file if it does not exist, and will truncate it if it does.
     /// 
-    /// If you only need to write the contents, consider using `PrivateStorage::write`  instead.  
+    /// If you only need to write the contents, consider using [`PrivateStorage::write`]  instead.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::File::create`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::File::create`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -714,10 +736,10 @@ pub trait PrivateStorage {
 
     /// Reads the entire contents of a file into a bytes vector.  
     /// 
-    /// If you need `std::fs::File`, use ``PrivateStorage::open_file`` insted.  
+    /// If you need [`std::fs::File`], use [`PrivateStorage::open_file`] insted.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::read`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::read`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -733,10 +755,10 @@ pub trait PrivateStorage {
 
     /// Reads the entire contents of a file into a string.  
     /// 
-    /// If you need `std::fs::File`, use ``PrivateStorage::open_file`` insted.  
+    /// If you need [`std::fs::File`], use [`PrivateStorage::open_file`] insted.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::read_to_string`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::read_to_string`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -752,8 +774,8 @@ pub trait PrivateStorage {
 
     /// Returns an iterator over the entries within a directory.
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::read_dir`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::read_dir`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -773,8 +795,8 @@ pub trait PrivateStorage {
 
     /// Removes a file from the filesystem.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::remove_file`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::remove_file`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -789,10 +811,10 @@ pub trait PrivateStorage {
     }
 
     /// Removes an empty directory.  
-    /// If you want to remove a directory that is not empty, as well as all of its contents recursively, consider using `PrivateStorage::remove_dir_all` instead.  
+    /// If you want to remove a directory that is not empty, as well as all of its contents recursively, consider using [`PrivateStorage::remove_dir_all`] instead.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::remove_dir`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::remove_dir`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -813,8 +835,8 @@ pub trait PrivateStorage {
 
     /// Removes a directory at this path, after removing all its contents. Use carefully!  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::remove_dir_all`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::remove_dir_all`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -835,8 +857,8 @@ pub trait PrivateStorage {
 
     /// Returns Ok(true) if the path points at an existing entity.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::exists`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::exists`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.
@@ -852,8 +874,8 @@ pub trait PrivateStorage {
 
     /// Queries the file system to get information about a file, directory.  
     /// 
-    /// This internally uses `PrivateStorage::resolve_path` and `std::fs::metadata`.  
-    /// See `PrivateStorage::resolve_path` for details.  
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::metadata`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
     /// All Android version.

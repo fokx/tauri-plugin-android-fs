@@ -9,7 +9,7 @@ All you need to do is register the core plugin with Tauri:
 
 `src-tauri/src/lib.rs`
 
-```
+```rust
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -25,31 +25,41 @@ There are three main ways to manipulate files:
 ### 1. Dialog
 Opens the file picker to read and write user-selected files.
 
-```
+```rust
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, VisualMediaTarget};
 
 fn read_files(app: tauri::AppHandle) {
     let api = app.android_fs();
-    let selected_paths = api.show_open_file_dialog(&["*/*"], true).unwrap();
+    let selected_paths = api.show_open_file_dialog(
+        &["*/*"], // Target MIME types
+        true // Allow multiple files
+    ).unwrap();
 
     if selected_paths.is_empty() {
-        // Handle cancellation
-    } else {
+        // Handle cancel
+    }
+    else {
         for path in selected_paths {
             let file_name = api.get_file_name(&path).unwrap();
             let file: std::fs::File = api.open_file(&path).unwrap();
+            // Handle read-only file
         }
     }
 }
 
 fn write_file(app: tauri::AppHandle) {
     let api = app.android_fs();
-    let selected_path = api.show_save_file_dialog("fileName", Some("image/png")).unwrap();
+    let selected_path = api.show_save_file_dialog(
+        "fileName", // Initial file name
+        Some("image/png") // Target MIME type
+    ).unwrap();
 
     if let Some(path) = selected_path {
         let mut file: std::fs::File = api.create_file(&path).unwrap();
-    } else {
-        // Handle cancellation
+        // Handle write-only file
+    } 
+    else {
+        // Handle cancel
     }
 }
 ```
@@ -57,17 +67,18 @@ fn write_file(app: tauri::AppHandle) {
 ### 2. Public Storage
 File storage that is available to other applications and users.
 
-```
+```rust
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicImageDir, PublicStorage};
 
 fn example(app: tauri::AppHandle) {
     let api = app.android_fs().public_storage();
     let contents: Vec<u8> = todo!();
 
+    // Write a PNG image
     api.write_image(
-        PublicImageDir::Pictures,
-        "myApp/2025-02-13.png",
-        Some("image/png"),
+        PublicImageDir::Pictures, // Base directory
+        "myApp/2025-02-13.png", // Relative file path
+        Some("image/png"), // MIME type
         &contents
     ).unwrap();
 }
@@ -76,18 +87,25 @@ fn example(app: tauri::AppHandle) {
 ### 3. Private Storage
 File storage intended for the app’s use only.
 
-```
+```rust
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PrivateDir, PrivateStorage};
 
 fn example(app: tauri::AppHandle) {
     let api = app.android_fs().private_storage();
+    let contents: Vec<u8> = todo!();
 
-    // Write data
-    api.write(PrivateDir::Data, "config/data1.txt", "data").unwrap();
+    // Write contents
+    api.write(
+        PrivateDir::Data, // Base directory
+        "config/data1", // Relative file path
+        &contents
+    ).unwrap();
 
-    // Read data
-    let data = api.read_to_string(PrivateDir::Data, "config/data1.txt").unwrap();
-    assert_eq!(data, "data");
+    // Read contents
+    let contents = api.read(
+        PrivateDir::Data, // Base directory
+        "config/data1" // Relative file path
+    ).unwrap();
 }
 ```
 
