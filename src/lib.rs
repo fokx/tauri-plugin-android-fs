@@ -352,7 +352,7 @@ pub trait PublicStorage {
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on writable files, use `PublicStorage::write_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use `PublicStorage::write_with_contents_writer` insted.  
     /// 
     /// # Note
     /// Do not save files directly in the base directory. 
@@ -382,11 +382,11 @@ pub trait PublicStorage {
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on writable files, use `PublicStorage::write_image_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use `PublicStorage::write_image_with_contents_writer` insted.  
     /// 
     /// # Note
     /// Do not set a non-image type to `mime_type`, as it may result in an error. 
-    /// Even if the type is an image, if the Android system does not recognize it as such, an error will occur. 
+    /// Even if the type is an image, an error will occur if the Android system does not recognize the type or contents as an image.   
     /// 
     /// Do not save files directly in the base directory. 
     /// Please specify a subdirectory in the `relative_path_with_sub_dir`, such as `appName/file.png` or `appName/2025-2-11/file.png`. 
@@ -415,11 +415,11 @@ pub trait PublicStorage {
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on writable files, use `PublicStorage::write_video_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use `PublicStorage::write_video_with_contents_writer` insted.  
     /// 
     /// # Note
     /// Do not set a non-video type to `mime_type`, as it may result in an error. 
-    /// Even if the type is an video, if the Android system does not recognize it as such, an error will occur.  
+    /// Even if the type is an video, an error will occur if the Android system does not recognize the type or contents as an video.   
     /// 
     /// Do not save files directly in the base directory. 
     /// Please specify a subdirectory in the `relative_path_with_sub_dir, such as `appName/file.mp4` or `appName/2025-2-11/file.mp4`. 
@@ -448,11 +448,11 @@ pub trait PublicStorage {
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
-    /// If you want to operate directly on writable files, use `PublicStorage::write_audio_with_contents_writer` insted.  
+    /// If you want to operate directly on a write-only file, use `PublicStorage::write_audio_with_contents_writer` insted.  
     /// 
     /// # Note
     /// Do not set a non-audio type to `mime_type`, as it may result in an error. 
-    /// Even if the type is an audio, if the Android system does not recognize it as such, an error will occur.  
+    /// Even if the type is an audio, an error will occur if the Android system does not recognize the type or contents as an audio.   
     /// 
     /// Do not save files directly in the base directory. 
     /// Please specify a subdirectory in the `relative_path_with_sub_dir`, such as `appName/file.mp3` or `appName/2025-2-11/file.mp3`. 
@@ -484,6 +484,10 @@ pub trait PublicStorage {
 
     /// See ``PublicStorage::write`` for description.
     ///
+    /// # Note
+    /// The file provided in `contents_writer` is write-only.
+    /// 
+    /// # Examples
     /// The following is equivalent to `PublicStorage::write`.  
     /// ```ignore
     /// self.write_with_contents_writer(
@@ -503,6 +507,10 @@ pub trait PublicStorage {
 
     /// See ``PublicStorage::write_image`` for description.
     ///
+   /// # Note
+    /// The file provided in `contents_writer` is write-only.
+    /// 
+    /// # Examples
     /// The following is equivalent to `PublicStorage::write_image`.  
     /// ```ignore
     /// self.write_image_with_contents_writer(
@@ -522,6 +530,10 @@ pub trait PublicStorage {
 
     /// See ``PublicStorage::write_video`` for description.
     ///
+    /// # Note
+    /// The file provided in `contents_writer` is write-only.
+    /// 
+    /// # Examples
     /// The following is equivalent to `PublicStorage::write_video`.  
     /// ```ignore
     /// self.write_video_with_contents_writer(
@@ -541,6 +553,10 @@ pub trait PublicStorage {
 
     /// See ``PublicStorage::write_audio`` for description.
     ///
+    /// # Note
+    /// The file provided in `contents_writer` is write-only.
+    /// 
+    /// # Examples
     /// The following is equivalent to `PublicStorage::write_audio`.  
     /// ```ignore
     /// self.write_audio_with_contents_writer(
@@ -577,7 +593,7 @@ pub trait PrivateStorage {
     /// Get the absolute path of the specified directory.  
     /// Apps require no extra permissions to read or write to the returned path, since this path lives in their private storage.  
     ///
-    /// These files will be deleted when the app is uninstalled, and may also be deleted by the user.  
+    /// These files will be deleted when the app is uninstalled and may also be deleted at the user’s request. 
     /// When using `PrivateDir::Cache`, the system will automatically delete files in this directory as disk space is needed elsewhere on the device.   
     /// 
     /// The returned path may change over time if the calling app is moved to an adopted storage device, so only relative paths should be persisted.   

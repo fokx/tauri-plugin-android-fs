@@ -23,7 +23,7 @@ pub enum PrivateDir {
 	/// 
 	/// The system prevents other apps from accessing these locations, and on Android 10 (API level 29) and higher, these locations are encrypted.  
 	///  
-	/// These files will be deleted when the app is uninstalled, and may also be deleted by the user.  
+	/// These files will be deleted when the app is uninstalled and may also be deleted at the user’s request.  
 	/// 
 	/// ex: `/data/user/0/{app-package-name}/files`
 	Data,
@@ -32,8 +32,8 @@ pub enum PrivateDir {
 	/// 
 	/// The system prevents other apps from accessing these locations, and on Android 10 (API level 29) and higher, these locations are encrypted.  
 	/// 
-	/// These files will be deleted when the app is uninstalled, and may also be deleted by the user.  
-	/// The system will automatically delete files in this directory as disk space is needed elsewhere on the device.  
+	/// These files will be deleted when the app is uninstalled and may also be deleted at the user’s request. 
+	/// In addition, the system will automatically delete files in this directory as disk space is needed elsewhere on the device.  
 	/// 
 	/// ex: `/data/user/0/{app-package-name}/cache`
 	Cache,
