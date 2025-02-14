@@ -80,6 +80,18 @@ class SavePublicFileAfterWriteArgs {
 }
 
 @InvokeArg
+class TakePersistableUriPermissionArgs {
+    lateinit var path: String
+    lateinit var mode: PersistableUriPermissionMode
+}
+
+@InvokeArg
+enum class PersistableUriPermissionMode {
+    ReadOnly,
+    WriteOnly,
+}
+
+@InvokeArg
 enum class FileType {
     Image,
     Video,
@@ -173,6 +185,26 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
         }
         catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke getFileName."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun takePersistableUriPermission(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(TakePersistableUriPermissionArgs::class.java)
+
+            val flag = when (args.mode) {
+                PersistableUriPermissionMode.ReadOnly -> Intent.FLAG_GRANT_READ_URI_PERMISSION
+                PersistableUriPermissionMode.WriteOnly -> Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            }
+
+            activity.contentResolver.takePersistableUriPermission(Uri.parse(args.path), flag)
+            invoke.resolve()
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke takePersistableUriPermission."
             Logger.error(message)
             invoke.reject(message)
         }

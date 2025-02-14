@@ -26,7 +26,7 @@
 //! Opens the file picker to read and write user-selected files.
 //!
 //! ```no_run
-//! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, VisualMediaTarget};
+//! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt};
 //!
 //! fn read_files(app: tauri::AppHandle) {
 //!     let api = app.android_fs();
@@ -50,7 +50,7 @@
 //! fn write_file(app: tauri::AppHandle) {
 //!     let api = app.android_fs();
 //!     let selected_path = api.show_save_file_dialog(
-//!         "fileName", // Initial file name
+//!         "", // Initial file name
 //!         Some("image/png") // Target MIME type
 //!     ).unwrap();
 //!
@@ -125,8 +125,8 @@ pub use impls::{AndroidFsExt, init};
 /// This is [`tauri_plugin_fs::FilePath`] for compatibility.  
 /// 
 /// # Note
-/// In this crate, functions that take this as an argument will work correctly if it is the value returned by a function within this crate, at a minimum.
-/// And [`FilePath::Path(_)`](tauri_plugin_fs::FilePath::Path) will not work.
+/// In this crate, functions that take this as an argument will work correctly if it is the value returned by a function within this crate, at a minimum. 
+/// And [`FilePath::Path(_)`](tauri_plugin_fs::FilePath::Path) will not work in this crate.
 pub type FilePath = tauri_plugin_fs::FilePath;
 
 /// API
@@ -260,6 +260,9 @@ pub trait AndroidFs {
     /// If this is empty, all file types will be available for selection. 
     /// This is equivalent to `["*/*"]`, and it will invoke the standard file picker in most cases.  
     /// 
+    /// By default, this [`FilePath`] is valid until the app is terminated. 
+    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`].
+    /// 
     /// # Support
     /// All Android version.
     fn show_open_file_dialog(
@@ -274,10 +277,13 @@ pub trait AndroidFs {
     /// This is more user-friendly than [`AndroidFs::show_open_file_dialog`].  
     ///
     /// # Note
+    /// By default, this [`FilePath`] is valid until the app is terminated. 
+    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`].  
+    /// 
     /// The file obtained from this function cannot retrieve the correct file name using [`AndroidFs::get_file_name`].
     /// Instead, it will be assigned a sequential number, such as `1000091523.png`.  
     /// <https://issuetracker.google.com/issues/268079113>  
-    ///  
+    ///
     /// # Support
     /// This is available on devices that meet the following criteria:
     ///  - Run Android 11 (API level 30) or higher
@@ -292,17 +298,20 @@ pub trait AndroidFs {
     ) -> crate::Result<Vec<FilePath>>;
 
     /// Open a dialog for file saving, and write contents to the selected file, then return that path.    
-    /// This returns a **writable** `FilePath` . If canceled by the user, return None, and do not write it.  
+    /// This returns a **writable** `FilePath` . If canceled by the user, return None, and do not write it. 
+    /// 
+    /// If you want to write to a file, use [`AndroidFs::show_save_file_dialog`]  then [`AndroidFs::create_file`] insted.   
     /// 
     /// When storing media files such as images, videos, and audio, consider using [`PublicStorage::write_image`] or a similar method.  
     /// When a file does not need to be accessed by other applications and users, consider using [`PrivateStorage::write`].  
     /// These are easier because the destination does not need to be selected in a dialog.  
     /// 
-    /// If you want to write to a file, use [`AndroidFs::show_save_file_dialog`]  then [`AndroidFs::create_file`] insted.  
-    /// 
     /// # Note
     /// `mime_type`  specify the type of the target file to be saved. 
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// By default, this [`FilePath`] is valid until the app is terminated. 
+    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`] or [`AndroidFs::take_persistable_write_permission`].
     /// 
     /// # Support
     /// All Android version.
@@ -324,15 +333,18 @@ pub trait AndroidFs {
     /// Open a dialog for file saving, and return the selected path.  
     /// This returns a **writable** `FilePath` . If canceled by the user, return None.  
     /// 
+    /// If you only need to write contents, use [`AndroidFs::show_save_file_dialog_with_contents`] instead.  
+    /// 
     /// When storing media files such as images, videos, and audio, consider using [`PublicStorage::write_image`] or a similar method.  
     /// When a file does not need to be accessed by other applications and users, consider using  [`PrivateStorage::write`].  
     /// These are easier because the destination does not need to be selected in a dialog.  
     /// 
-    /// If you only need to write contents, use [`AndroidFs::show_save_file_dialog_with_contents`] instead.  
-    /// 
     /// # Note
     /// `mime_type` specify the type of the target file to be saved. 
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// By default, this [`FilePath`] is valid until the app is terminated. 
+    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`] or [`AndroidFs::take_persistable_write_permission`].
     /// 
     /// # Support
     /// All Android version.
@@ -341,6 +353,34 @@ pub trait AndroidFs {
         default_file_name: impl AsRef<str>,
         mime_type: Option<&str>,
     ) -> crate::Result<Option<FilePath>>;
+
+    /// Take persistent permission to read the file.  
+    /// 
+    /// To preserve access to files across app restarts and improve the user experience. 
+    /// If you only need it until the end of the app session, you do not need to use this.  
+    /// 
+    /// This works by just calling it, without displaying any confirmation to the user.  
+    /// 
+    /// # Note
+    /// Even after calling this, the app doesn't retain access to the file if the file is moved or deleted.  
+    /// 
+    /// # Helper
+    /// There are helper functions, such as [`convert_file_path_to_string`] and [`convert_string_to_file_path`], for storing [`FilePath`].   
+    fn take_persistable_read_permission(&self, path: &FilePath) -> crate::Result<()>;
+
+    /// Take persistent permission to write the file.  
+    /// This is only for **writable** [`FilePath`].  
+    /// 
+    /// To preserve access to files across app restarts and improve the user experience. 
+    /// If you only need it until the end of the app session, you do not need to use this.  
+    /// 
+    /// This works by just calling it, without displaying any confirmation to the user.  
+    /// # Note
+    /// Even after calling this, the app doesn't retain access to the file if the file is moved or deleted. 
+    /// 
+    /// # Helper
+    /// There are helper functions, such as [`convert_file_path_to_string`] and [`convert_string_to_file_path`], for storing [`FilePath`].   
+    fn take_persistable_write_permission(&self, path: &FilePath) -> crate::Result<()>;
 
     /// Verify whether [`AndroidFs::show_open_visual_media_dialog`] is available on a given device.
     /// 
@@ -892,4 +932,20 @@ pub trait PrivateStorage {
 
         Ok(std::fs::metadata(path)?)
     }
+}
+
+/// Convert string to [`FilePath`].  
+pub fn convert_file_path_to_string(path: &FilePath) -> String {
+    path.to_string()
+}
+
+/// Convert [`FilePath`] to string.
+/// 
+/// # Note
+/// This does not validate the value and will not cause an error or panic if an incorrect value is provided.
+pub fn convert_string_to_file_path(string: impl AsRef<str>) -> FilePath {
+    let result: std::result::Result<_, std::convert::Infallible> = string.as_ref().parse();
+
+    // This will not cause panic. Because result is infallible.
+    result.unwrap()
 }

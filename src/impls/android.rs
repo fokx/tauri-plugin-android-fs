@@ -113,6 +113,14 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
+    fn take_persistable_read_permission(&self, path: &FilePath) -> crate::Result<()> {
+        self.take_persistable_permission(path, "ReadOnly")
+	}
+
+	fn take_persistable_write_permission(&self, path: &FilePath) -> crate::Result<()> {
+		self.take_persistable_permission(path, "WriteOnly")
+	}
+
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {
         impl_serde!(struct Res { value: bool });
 
@@ -356,6 +364,18 @@ impl<R: Runtime> AndroidFsImpl<R> {
             .map(|_| ())
             .map_err(Into::into)
     }
+
+    fn take_persistable_permission(&self, path: &FilePath, mode: &str) -> crate::Result<()> {
+        impl_serde!(struct Req<'a> { path: String, mode: &'a str });
+		impl_serde!(struct Res;);
+
+        let path = path.to_string();
+
+        self.0  
+            .run_mobile_plugin::<Res>("takePersistableUriPermission", Req { path, mode })
+            .map(|_| ())
+            .map_err(Into::into)
+	}
 }
 
 /// convert "dir1/dir2/dir3/file.txt" to ("dir1/dir2/dir3", "file.txt")

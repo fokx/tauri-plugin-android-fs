@@ -43,7 +43,7 @@ pub enum Error {
 impl From<tauri::plugin::mobile::PluginInvokeError> for crate::Error {
 
 	fn from(value: tauri::plugin::mobile::PluginInvokeError) -> Self {
-		Self::PluginInvoke(anyhow::anyhow!("{:?}", value))
+		Self::PluginInvoke(anyhow::anyhow!("{value}"))
 	}
 }
 

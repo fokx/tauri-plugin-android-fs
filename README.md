@@ -26,7 +26,7 @@ There are three main ways to manipulate files:
 Opens the file picker to read and write user-selected files.
 
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, VisualMediaTarget};
+use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt};
 
 fn read_files(app: tauri::AppHandle) {
     let api = app.android_fs();
@@ -50,7 +50,7 @@ fn read_files(app: tauri::AppHandle) {
 fn write_file(app: tauri::AppHandle) {
     let api = app.android_fs();
     let selected_path = api.show_save_file_dialog(
-        "fileName", // Initial file name
+        "", // Initial file name
         Some("image/png") // Target MIME type
     ).unwrap();
 

@@ -63,6 +63,14 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
 		Err(crate::Error::NotAndroid)
 	}
 
+	fn take_persistable_read_permission(&self, _path: &FilePath) -> crate::Result<()> {
+		Err(crate::Error::NotAndroid)
+	}
+
+	fn take_persistable_write_permission(&self, _path: &FilePath) -> crate::Result<()> {
+		Err(crate::Error::NotAndroid)
+	}
+
 	fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {
 		Err(crate::Error::NotAndroid)
 	}
