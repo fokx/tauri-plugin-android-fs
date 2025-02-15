@@ -43,6 +43,11 @@
 //!             let file_name = api.get_file_name(&path).unwrap();
 //!             let file: std::fs::File = api.open_file(&path).unwrap();
 //!             // Handle read-only file
+//! 
+//!             // Alternatively, the path can be returned to the front end, 
+//!             // and file processing can be handled within another tauri::command function that takes it as an argument.
+//!             // If you need to use file data on the front end, 
+//!             // consider using Tauri’s custom protocols for efficient transmission.
 //!         }
 //!     }
 //! }
@@ -359,7 +364,7 @@ pub trait AndroidFs {
     /// To preserve access to files across app restarts and improve the user experience. 
     /// If you only need it until the end of the app session, you do not need to use this.  
     /// 
-    /// This works by just calling it, without displaying any confirmation to the user.  
+    /// This works by just calling, without displaying any confirmation to the user.  
     /// 
     /// # Note
     /// Even after calling this, the app doesn't retain access to the file if the file is moved or deleted.  
@@ -374,7 +379,7 @@ pub trait AndroidFs {
     /// To preserve access to files across app restarts and improve the user experience. 
     /// If you only need it until the end of the app session, you do not need to use this.  
     /// 
-    /// This works by just calling it, without displaying any confirmation to the user.  
+    /// This works by just calling, without displaying any confirmation to the user.  
     /// # Note
     /// Even after calling this, the app doesn't retain access to the file if the file is moved or deleted. 
     /// 
@@ -934,12 +939,12 @@ pub trait PrivateStorage {
     }
 }
 
-/// Convert string to [`FilePath`].  
+/// Convert [`FilePath`] to string.
 pub fn convert_file_path_to_string(path: &FilePath) -> String {
     path.to_string()
 }
 
-/// Convert [`FilePath`] to string.
+/// Convert string to [`FilePath`].  
 /// 
 /// # Note
 /// This does not validate the value and will not cause an error or panic if an incorrect value is provided.

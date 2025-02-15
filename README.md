@@ -42,7 +42,12 @@ fn read_files(app: tauri::AppHandle) {
         for path in selected_paths {
             let file_name = api.get_file_name(&path).unwrap();
             let file: std::fs::File = api.open_file(&path).unwrap();
-            // Handle read-only file
+            // Handle read-only file.
+
+            // Alternatively, the path can be returned to the front end, 
+            // and file processing can be handled within another tauri::command function that takes it as an argument.
+            // If you need to use file data on the front end, 
+            // consider using Tauri’s custom protocols for efficient transmission.
         }
     }
 }

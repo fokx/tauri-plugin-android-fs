@@ -458,7 +458,7 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
 
 
     @ActivityCallback
-    fun filePickerResult(invoke: Invoke, result: ActivityResult?) {
+    fun filePickerResult(invoke: Invoke, result: ActivityResult) {
         try {
             when (result?.resultCode) {
                 Activity.RESULT_OK -> {
