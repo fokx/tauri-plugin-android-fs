@@ -9,9 +9,9 @@ pub struct AndroidFsImpl<R: Runtime>(PluginHandle<R>);
 impl<R: Runtime> AndroidFsImpl<R> {
 
     pub fn new<C: DeserializeOwned>(
-		_app: &AppHandle<R>,
-    	api: PluginApi<R, C>,
-  	) -> crate::Result<impl AndroidFs> {
+        _app: &AppHandle<R>,
+        api: PluginApi<R, C>,
+    ) -> crate::Result<impl AndroidFs> {
 
         Ok(Self(api.register_android_plugin("com.plugin.android_fs", "AndroidFsPlugin")?))
     }
@@ -115,11 +115,11 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
 
     fn take_persistable_read_permission(&self, path: &FilePath) -> crate::Result<()> {
         self.take_persistable_permission(path, "ReadOnly")
-	}
+    }
 
-	fn take_persistable_write_permission(&self, path: &FilePath) -> crate::Result<()> {
-		self.take_persistable_permission(path, "WriteOnly")
-	}
+    fn take_persistable_write_permission(&self, path: &FilePath) -> crate::Result<()> {
+        self.take_persistable_permission(path, "WriteOnly")
+    }
 
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {
         impl_serde!(struct Res { value: bool });
@@ -254,7 +254,7 @@ impl<R: Runtime> PublicStorage for AndroidFsImpl<R> {
     }
 
     fn is_recordings_dir_available(&self) -> crate::Result<bool> {
-		impl_serde!(struct Res { value: bool });
+        impl_serde!(struct Res { value: bool });
 
         self.0  
             .run_mobile_plugin::<Res>("isRecordingsDirAvailable", "")
@@ -367,7 +367,7 @@ impl<R: Runtime> AndroidFsImpl<R> {
 
     fn take_persistable_permission(&self, path: &FilePath, mode: &str) -> crate::Result<()> {
         impl_serde!(struct Req<'a> { path: String, mode: &'a str });
-		impl_serde!(struct Res;);
+        impl_serde!(struct Res;);
 
         let path = path.to_string();
 

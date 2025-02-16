@@ -7,20 +7,20 @@ pub type Result<T> = std::result::Result<T, crate::Error>;
 pub enum PathError {
 
 	/// When the path contains consecutive separators.
-    #[error("The path contains consecutive separators.")]
+	#[error("The path contains consecutive separators.")]
     ConsecutiveSeparator,
 
 	/// When the path does not contain a filename.
-    #[error("The path does not contain a filename.")]
+	#[error("The path does not contain a filename.")]
     DoesNotContainFileName,
 
 	/// When the path does not contain a subdirectory.
-    #[error("The path does not contain a subdirectory.")]
+	#[error("The path does not contain a subdirectory.")]
     DoesNotContainSubDir,
 
 	/// When the path is empty.
 	#[error("The path is empty.")]
-    Empty,
+	Empty,
 }
 
 #[derive(Debug, thiserror::Error)]

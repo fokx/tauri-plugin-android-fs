@@ -11,11 +11,11 @@ impl<R: Runtime> AndroidFsImpl<R> {
 
 	pub fn new<C: DeserializeOwned>(
 		app: &AppHandle<R>,
-    	_api: PluginApi<R, C>,
-  	) -> crate::Result<impl AndroidFs> {
-
+		_api: PluginApi<R, C>,
+	) -> crate::Result<impl AndroidFs> {
+		
 		Ok(Self(app.clone()))
-  	}
+	}
 }
 
 impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {

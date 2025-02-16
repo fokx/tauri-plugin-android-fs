@@ -575,7 +575,7 @@ pub trait PublicStorage {
 
     /// See [`PublicStorage::write_image`] for description.
     ///
-   /// # Note
+    /// # Note
     /// The file provided in `contents_writer` is write-only.
     /// 
     /// # Examples
