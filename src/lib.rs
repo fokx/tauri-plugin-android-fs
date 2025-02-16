@@ -380,6 +380,7 @@ pub trait AndroidFs {
     /// If you only need it until the end of the app session, you do not need to use this.  
     /// 
     /// This works by just calling, without displaying any confirmation to the user.  
+    /// 
     /// # Note
     /// Even after calling this, the app doesn't retain access to the file if the file is moved or deleted. 
     /// 

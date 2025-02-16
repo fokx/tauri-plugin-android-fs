@@ -139,7 +139,7 @@ impl<R: Runtime> PublicStorage for AndroidFsImpl<R> {
 	}
 }
 
-impl <R: Runtime> PrivateStorage for AndroidFsImpl<R> {
+impl<R: Runtime> PrivateStorage for AndroidFsImpl<R> {
 
 	fn resolve_path(&self, _dir: PrivateDir) -> crate::Result<std::path::PathBuf> {
 		Err(crate::Error::NotAndroid)
