@@ -1,3 +1,19 @@
+# Version 1.5.0
+- Deprecate `AndroidFs::take_persistable_read_permission`.
+- Deprecate `AndroidFs::take_persistable_write_permission`.
+- Add `DirPath`.
+- Add `EntryPath`.
+- Add `PersistableAccessMode`.
+- Add `convert_string_to_dir_path`.
+- Add `convert_dir_path_to_string`.
+- Add `AndroidFs::show_open_dir_dialog`.
+- Add `AndroidFs::read_dir`.
+- Add `AndroidFs::get_dir_name`.
+- Add `AndroidFs::grant_persistable_file_access`.
+- Add `AndroidFs::grant_persistable_dir_access`.
+- Update documents.
+- Remove files that should not be included.
+
 # Version 1.4.2
 - Remove files that should not be included.
 

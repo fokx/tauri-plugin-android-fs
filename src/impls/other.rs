@@ -54,6 +54,18 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
+    fn show_open_dir_dialog(&self) -> crate::Result<Option<DirPath>> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn read_dir(&self, _path: &DirPath) -> crate::Result<Vec<EntryPath>> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn get_dir_name(&self, _path: &DirPath) -> crate::Result<String> {
+        Err(crate::Error::NotAndroid)
+    }
+
     fn show_save_file_dialog(
         &self,
         _default_file_name: impl AsRef<str>,
@@ -63,11 +75,11 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn take_persistable_read_permission(&self, _path: &FilePath) -> crate::Result<()> {
+    fn grant_persistable_file_access(&self, _path: &FilePath, _mode: PersistableAccessMode) -> crate::Result<()> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn take_persistable_write_permission(&self, _path: &FilePath) -> crate::Result<()> {
+    fn grant_persistable_dir_access(&self, _path: &DirPath, _mode: PersistableAccessMode) -> crate::Result<()> {
         Err(crate::Error::NotAndroid)
     }
 

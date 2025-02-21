@@ -13,6 +13,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.documentfile.provider.DocumentFile
 import app.tauri.Logger
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -89,6 +90,7 @@ class TakePersistableUriPermissionArgs {
 enum class PersistableUriPermissionMode {
     ReadOnly,
     WriteOnly,
+    ReadAndWrite
 }
 
 @InvokeArg
@@ -115,9 +117,93 @@ enum class BaseDir {
     Download,
 }
 
+@InvokeArg
+class ReadDirArgs {
+    lateinit var path: String
+}
+
+@InvokeArg
+class GetDirNameArgs {
+    lateinit var path: String
+}
+
 @TauriPlugin
 class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
     private val isVisualMediaPickerAvailable = ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()
+
+    @Command
+    fun showOpenDirDialog(invoke: Invoke) {
+        try {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            startActivityForResult(invoke, intent, "dirDialogResult")
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke showOpenDirDialog."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @ActivityCallback
+    private fun dirDialogResult(invoke: Invoke, result: ActivityResult) {
+        try {
+            val res = JSObject()
+            res.put("path", result.data?.data?.toString())
+            invoke.resolve(res)
+        }
+        catch (ex: java.lang.Exception) {
+            val message = ex.message ?: "Failed to invoke dirDialogResult."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun readDir(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ReadDirArgs::class.java)
+            val uri = Uri.parse(args.path)
+            val dir = DocumentFile.fromTreeUri(activity, uri) ?: throw Error("Invalid or permission denied URI: $uri")
+            val array = JSArray()
+            for (file in dir.listFiles()) {
+                val obj = JSObject()
+                obj.put("path", file.uri.toString())
+                obj.put("type", if (file.isFile) "File" else "Dir")
+                array.put(obj)
+            }
+            val res = JSObject()
+            res.put("entries", array)
+            invoke.resolve(res)
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke showOpenDirDialog."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun getDirName(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(GetDirNameArgs::class.java)
+
+            val ret = JSObject()
+            val uri = Uri.parse(args.path)
+            val name = DocumentFile.fromTreeUri(activity, uri)?.name
+            if (name != null) {
+                ret.put("name", name)
+                invoke.resolve(ret)
+            }
+            else {
+                invoke.reject("Invalid or permission denied URI: $uri")
+            }
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke getDirName."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
 
     @Command
     fun getPrivateBaseDirAbsolutePaths(invoke: Invoke) {
@@ -195,12 +281,16 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
         try {
             val args = invoke.parseArgs(TakePersistableUriPermissionArgs::class.java)
 
+            // this is folder or file uri
+            val uri = Uri.parse(args.path)
+
             val flag = when (args.mode) {
                 PersistableUriPermissionMode.ReadOnly -> Intent.FLAG_GRANT_READ_URI_PERMISSION
                 PersistableUriPermissionMode.WriteOnly -> Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                PersistableUriPermissionMode.ReadAndWrite -> Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             }
 
-            activity.contentResolver.takePersistableUriPermission(Uri.parse(args.path), flag)
+            activity.contentResolver.takePersistableUriPermission(uri, flag)
             invoke.resolve()
         }
         catch (ex: Exception) {

@@ -1,4 +1,3 @@
-use std::io::Write;
 use serde::{de::DeserializeOwned, Serialize, Deserialize};
 use tauri::{plugin::{PluginApi, PluginHandle}, AppHandle, Runtime};
 use crate::{models::*, PathError, AndroidFs, FilePath, PrivateStorage, PublicStorage};
@@ -19,21 +18,14 @@ impl<R: Runtime> AndroidFsImpl<R> {
 
 
 macro_rules! impl_serde {
-    (struct $struct_ident: ident { $( $name: ident: $ty: ty ),* }) => {
+    (struct $struct_ident:ident $(< $lifetime:lifetime >)? { $( $name:ident: $ty:ty ),* $(,)? }) => {
         #[derive(Serialize, Deserialize)]
         #[serde(rename_all = "camelCase")]
-        struct $struct_ident {
+        struct $struct_ident $(< $lifetime >)? {
             $($name: $ty,)*
         }
     };
-    (struct $struct_ident: ident<'a> { $( $name: ident: $ty: ty ),* }) => {
-        #[derive(Serialize, Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct $struct_ident<'a> {
-            $($name: $ty,)*
-        }
-    };
-    (struct $struct_ident: ident;) => {
+    (struct $struct_ident:ident $(;)?) => {
         #[derive(Serialize, Deserialize)]
         struct $struct_ident;
     };
@@ -45,7 +37,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         impl_serde!(struct Req { path: String });
         impl_serde!(struct Res { name: String });
 
-        let path = path.to_string();
+        let path = crate::convert_file_path_to_string(path);
 
         self.0  
             .run_mobile_plugin::<Res>("getFileName", Req { path })
@@ -57,7 +49,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         impl_serde!(struct Req { path: String });
         impl_serde!(struct Res { value: Option<String> });
 
-        let path = path.to_string();
+        let path = crate::convert_file_path_to_string(path);
 
         self.0  
             .run_mobile_plugin::<Res>("getMimeType", Req { path })
@@ -95,6 +87,39 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
+    fn show_open_dir_dialog(&self) -> crate::Result<Option<DirPath>> {
+        impl_serde!(struct Res { path: Option<DirPath> });
+    
+        self.0  
+            .run_mobile_plugin::<Res>("showOpenDirDialog", "")
+            .map(|v| v.path)
+            .map_err(Into::into)
+    }
+
+    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<EntryPath>> {
+        impl_serde!(struct Req { path: String });
+        impl_serde!(struct Res { entries: Vec<EntryPath> });
+
+        let path = crate::convert_dir_path_to_string(path);
+    
+        self.0  
+            .run_mobile_plugin::<Res>("readDir", Req { path })
+            .map(|v| v.entries)
+            .map_err(Into::into)
+    }
+
+    fn get_dir_name(&self, path: &DirPath) -> crate::Result<String> {
+        impl_serde!(struct Req { path: String });
+        impl_serde!(struct Res { name: String });
+
+        let path = crate::convert_dir_path_to_string(path);
+    
+        self.0  
+            .run_mobile_plugin::<Res>("getDirName", Req { path })
+            .map(|v| v.name)
+            .map_err(Into::into)
+    }
+
     fn show_save_file_dialog(
         &self,
         default_file_name: impl AsRef<str>,
@@ -113,12 +138,12 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
-    fn take_persistable_read_permission(&self, path: &FilePath) -> crate::Result<()> {
-        self.take_persistable_permission(path, "ReadOnly")
+    fn grant_persistable_file_access(&self, path: &FilePath, mode: PersistableAccessMode) -> crate::Result<()> {
+        self.take_persistable_permission(crate::convert_file_path_to_string(path), mode)
     }
 
-    fn take_persistable_write_permission(&self, path: &FilePath) -> crate::Result<()> {
-        self.take_persistable_permission(path, "WriteOnly")
+    fn grant_persistable_dir_access(&self, path: &DirPath, mode: PersistableAccessMode) -> crate::Result<()> {
+        self.take_persistable_permission(crate::convert_dir_path_to_string(path), mode)
     }
 
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {
@@ -269,7 +294,7 @@ impl<R: Runtime> AndroidFsImpl<R> {
         impl_serde!(struct Req<'a> { path: String, mode: &'a str });
         impl_serde!(struct Res { fd: std::os::fd::RawFd });
     
-        let path = path.to_string();
+        let path = crate::convert_file_path_to_string(path);
 
         self.0  
             .run_mobile_plugin::<Res>("getFileDescriptor", Req { path, mode })
@@ -345,7 +370,7 @@ impl<R: Runtime> AndroidFsImpl<R> {
         impl_serde!(struct Req { path: String });
         impl_serde!(struct Res;);
     
-        let path = path.to_string();
+        let path = crate::convert_file_path_to_string(path);
 
         self.0  
             .run_mobile_plugin::<Res>("savePublicFileAfterFailedWrite", Req { path })
@@ -357,7 +382,7 @@ impl<R: Runtime> AndroidFsImpl<R> {
         impl_serde!(struct Req { path: String });
         impl_serde!(struct Res;);
 
-        let path = path.to_string();
+        let path = crate::convert_file_path_to_string(path);
     
         self.0  
             .run_mobile_plugin::<Res>("savePublicFileAfterSucceedWrite", Req { path })
@@ -365,11 +390,9 @@ impl<R: Runtime> AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
-    fn take_persistable_permission(&self, path: &FilePath, mode: &str) -> crate::Result<()> {
-        impl_serde!(struct Req<'a> { path: String, mode: &'a str });
+    fn take_persistable_permission(&self, path: String, mode: PersistableAccessMode) -> crate::Result<()> {
+        impl_serde!(struct Req { path: String, mode: PersistableAccessMode });
         impl_serde!(struct Res;);
-
-        let path = path.to_string();
 
         self.0  
             .run_mobile_plugin::<Res>("takePersistableUriPermission", Req { path, mode })

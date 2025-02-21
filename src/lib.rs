@@ -76,11 +76,11 @@
 //! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicImageDir, PublicStorage};
 //!
 //! fn example(app: tauri::AppHandle) {
-//!     let api = app.android_fs().public_storage();
+//!     let storage = app.android_fs().public_storage();
 //!     let contents: Vec<u8> = todo!();
 //!
 //!     // Write a PNG image
-//!     api.write_image(
+//!     storage.write_image(
 //!         PublicImageDir::Pictures, // Base directory
 //!         "myApp/2025-02-13.png", // Relative file path
 //!         Some("image/png"), // MIME type
@@ -96,18 +96,18 @@
 //! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PrivateDir, PrivateStorage};
 //!
 //! fn example(app: tauri::AppHandle) {
-//!     let api = app.android_fs().private_storage();
+//!     let storage = app.android_fs().private_storage();
 //!     let contents: Vec<u8> = todo!();
 //!
 //!     // Write contents
-//!     api.write(
+//!     storage.write(
 //!         PrivateDir::Data, // Base directory
 //!         "config/data1", // Relative file path
 //!         &contents
 //!     ).unwrap();
 //!
 //!     // Read contents
-//!     let contents = api.read(
+//!     let contents = storage.read(
 //!         PrivateDir::Data, // Base directory
 //!         "config/data1" // Relative file path
 //!     ).unwrap();
@@ -127,13 +127,6 @@ pub use models::*;
 pub use error::{Error, Result, PathError};
 pub use impls::{AndroidFsExt, init};
 
-/// This is [`tauri_plugin_fs::FilePath`] for compatibility.  
-/// 
-/// # Note
-/// In this crate, functions that take this as an argument will work correctly if it is the value returned by a function within this crate, at a minimum. 
-/// And [`FilePath::Path(_)`](tauri_plugin_fs::FilePath::Path) will not work in this crate.
-pub type FilePath = tauri_plugin_fs::FilePath;
-
 /// API
 pub trait AndroidFs {
 
@@ -152,11 +145,19 @@ pub trait AndroidFs {
 
     /// Get the file name.  
     /// 
-    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`], or [`AndroidFs::show_save_file_dialog`].  
+    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
     /// All Android version.
     fn get_file_name(&self, path: &FilePath) -> crate::Result<String>;
+
+    /// Get the directory name.
+    /// 
+    /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn get_dir_name(&self, path: &DirPath) -> crate::Result<String>;
 
     /// Get the mime type.  
     /// If the type is unknown, this returns None. 
@@ -237,6 +238,14 @@ pub trait AndroidFs {
         Ok(buf)
     }
 
+    /// Returns the paths of the entries within the specified directory.  
+    /// 
+    /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<EntryPath>>;
+
     /// Writes a slice as the entire contents of a file in a **writable** `FilePath`.  
     /// This function will create a file if it does not exist, and will entirely replace its contents if it does.  
     /// 
@@ -255,7 +264,7 @@ pub trait AndroidFs {
     }
 
     /// Open a dialog for file selection.  
-    /// This returns a **readonly** `FilePath`  vec. If no file is selected or canceled by user, it is an empty vec.  
+    /// This returns a **read-only** `FilePath`  vec. If no file is selected or canceled by user, it is an empty vec.  
     /// 
     /// For images and videos, consider using [`AndroidFs::show_open_visual_media_dialog`] instead.  
     /// 
@@ -266,7 +275,7 @@ pub trait AndroidFs {
     /// This is equivalent to `["*/*"]`, and it will invoke the standard file picker in most cases.  
     /// 
     /// By default, this [`FilePath`] is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`].
+    /// If you want to persist it across app restarts, use [`AndroidFs::grant_persistable_file_access`].
     /// 
     /// # Support
     /// All Android version.
@@ -277,13 +286,13 @@ pub trait AndroidFs {
     ) -> crate::Result<Vec<FilePath>>;
 
     /// Opens a dialog for media file selection, such as images and videos.  
-    /// This returns a **readonly** `FilePath` vec. If no file is selected or canceled by user, it is an empty vec.  
+    /// This returns a **read-only** `FilePath` vec. If no file is selected or canceled by user, it is an empty vec.  
     /// 
     /// This is more user-friendly than [`AndroidFs::show_open_file_dialog`].  
     ///
     /// # Note
     /// By default, this [`FilePath`] is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`].  
+    /// If you want to persist it across app restarts, use [`AndroidFs::grant_persistable_file_access`].  
     /// 
     /// The file obtained from this function cannot retrieve the correct file name using [`AndroidFs::get_file_name`].
     /// Instead, it will be assigned a sequential number, such as `1000091523.png`.  
@@ -302,6 +311,18 @@ pub trait AndroidFs {
         multiple: bool
     ) -> crate::Result<Vec<FilePath>>;
 
+    /// Open a dialog for directory selection,
+    /// allowing the app to read and write any file in the selected directory and its subdirectories.  
+    /// If canceled by the user, return None.    
+    /// 
+    /// # Note
+    /// By default, this [`DirPath`] is valid until the app is terminated. 
+    /// If you want to persist it across app restarts, use [`AndroidFs::grant_persistable_dir_access`].
+    /// 
+    /// # Support
+    /// All Android version.
+    fn show_open_dir_dialog(&self) -> crate::Result<Option<DirPath>>;
+
     /// Open a dialog for file saving, and write contents to the selected file, then return that path.    
     /// This returns a **writable** `FilePath` . If canceled by the user, return None, and do not write it. 
     /// 
@@ -316,7 +337,7 @@ pub trait AndroidFs {
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
     /// 
     /// By default, this [`FilePath`] is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`] or [`AndroidFs::take_persistable_write_permission`].
+    /// If you want to persist it across app restarts, use [`AndroidFs::grant_persistable_file_access`].
     /// 
     /// # Support
     /// All Android version.
@@ -349,7 +370,7 @@ pub trait AndroidFs {
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
     /// 
     /// By default, this [`FilePath`] is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_read_permission`] or [`AndroidFs::take_persistable_write_permission`].
+    /// If you want to persist it across app restarts, use [`AndroidFs::grant_persistable_file_access`].
     /// 
     /// # Support
     /// All Android version.
@@ -359,34 +380,64 @@ pub trait AndroidFs {
         mime_type: Option<&str>,
     ) -> crate::Result<Option<FilePath>>;
 
-    /// Take persistent permission to read the file.  
+    /// Take persistent permission to access the file.  
     /// 
-    /// To preserve access to files across app restarts and improve the user experience. 
+    /// Preserve access across app and device restarts. 
     /// If you only need it until the end of the app session, you do not need to use this.  
     /// 
     /// This works by just calling, without displaying any confirmation to the user.  
     /// 
     /// # Note
-    /// Even after calling this, the app doesn't retain access to the file if the file is moved or deleted.  
+    /// [`PersistableAccessMode::WriteOnly`] and [`PersistableAccessMode::ReadAndWrite`] are only for **writable** [`FilePath`].  
     /// 
-    /// # Helper
-    /// There are helper functions, such as [`convert_file_path_to_string`] and [`convert_string_to_file_path`], for storing [`FilePath`].   
-    fn take_persistable_read_permission(&self, path: &FilePath) -> crate::Result<()>;
-
-    /// Take persistent permission to write the file.  
-    /// This is only for **writable** [`FilePath`].  
-    /// 
-    /// To preserve access to files across app restarts and improve the user experience. 
-    /// If you only need it until the end of the app session, you do not need to use this.  
-    /// 
-    /// This works by just calling, without displaying any confirmation to the user.  
-    /// 
-    /// # Note
     /// Even after calling this, the app doesn't retain access to the file if the file is moved or deleted. 
     /// 
     /// # Helper
     /// There are helper functions, such as [`convert_file_path_to_string`] and [`convert_string_to_file_path`], for storing [`FilePath`].   
-    fn take_persistable_write_permission(&self, path: &FilePath) -> crate::Result<()>;
+    /// 
+    /// # Support
+    /// All Android version.
+    fn grant_persistable_file_access(&self, path: &FilePath, mode: PersistableAccessMode) -> crate::Result<()>;
+
+    /// Take persistent permission to access the directory and its entries.  
+    /// 
+    /// Preserve access across app and device restarts. 
+    /// If you only need it until the end of the app session, you do not need to use this.  
+    /// 
+    /// This works by just calling, without displaying any confirmation to the user.  
+    /// 
+    /// # Note
+    /// Even after calling this, the app doesn't retain access to the directory if the directory is moved or deleted.  
+    /// 
+    /// # Helper
+    /// There are helper functions, such as [`convert_dir_path_to_string`] and [`convert_string_to_dir_path`], for storing [`DirPath`].   
+    /// 
+    /// # Support
+    /// All Android version.
+    fn grant_persistable_dir_access(&self, path: &DirPath, mode: PersistableAccessMode) -> crate::Result<()>;
+
+    /// Use [`AndroidFs::grant_persistable_file_access`] instead.
+    /// 
+    /// This is same as following.
+    /// ```ignore
+    /// self.grant_persistable_file_access(path, PersistableAccessMode::ReadOnly)
+    /// ```
+    #[deprecated(note = "Use AndroidFs::grant_persistable_file_access instead.")]
+    #[warn(deprecated)]
+    fn take_persistable_read_permission(&self, path: &FilePath) -> crate::Result<()> {
+        self.grant_persistable_file_access(path, PersistableAccessMode::ReadOnly)
+    }
+
+    /// Use [`AndroidFs::grant_persistable_file_access`] instead.  
+    /// This is same as following.
+    /// ```ignore
+    /// self.grant_persistable_file_access(path, PersistableAccessMode::WriteOnly)
+    /// ```
+    #[deprecated(note = "Use AndroidFs::grant_persistable_file_access instead.")]
+    #[warn(deprecated)]
+    fn take_persistable_write_permission(&self, path: &FilePath) -> crate::Result<()> {
+        self.grant_persistable_file_access(path, PersistableAccessMode::WriteOnly)
+    }
 
     /// Verify whether [`AndroidFs::show_open_visual_media_dialog`] is available on a given device.
     /// 
@@ -954,4 +1005,17 @@ pub fn convert_string_to_file_path(string: impl AsRef<str>) -> FilePath {
 
     // This will not cause panic. Because result is infallible.
     result.unwrap()
+}
+
+/// Convert [`DirPath`] to string.
+pub fn convert_dir_path_to_string(path: &DirPath) -> String {
+    path.0.to_owned()
+}
+
+/// Convert string to [`DirPath`].  
+/// 
+/// # Note
+/// This does not validate the value and will not cause an error or panic if an incorrect value is provided.
+pub fn convert_string_to_dir_path(string: impl AsRef<str>) -> DirPath {
+    DirPath(string.as_ref().to_owned())
 }

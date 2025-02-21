@@ -76,11 +76,11 @@ File storage that is available to other applications and users.
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicImageDir, PublicStorage};
 
 fn example(app: tauri::AppHandle) {
-    let api = app.android_fs().public_storage();
+    let storage = app.android_fs().public_storage();
     let contents: Vec<u8> = todo!();
 
     // Write a PNG image
-    api.write_image(
+    storage.write_image(
         PublicImageDir::Pictures, // Base directory
         "myApp/2025-02-13.png", // Relative file path
         Some("image/png"), // MIME type
@@ -96,18 +96,18 @@ File storage intended for the app’s use only.
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PrivateDir, PrivateStorage};
 
 fn example(app: tauri::AppHandle) {
-    let api = app.android_fs().private_storage();
+    let storage = app.android_fs().private_storage();
     let contents: Vec<u8> = todo!();
 
     // Write contents
-    api.write(
+    storage.write(
         PrivateDir::Data, // Base directory
         "config/data1", // Relative file path
         &contents
     ).unwrap();
 
     // Read contents
-    let contents = api.read(
+    let contents = storage.read(
         PrivateDir::Data, // Base directory
         "config/data1" // Relative file path
     ).unwrap();

@@ -1,6 +1,63 @@
 use serde::{Deserialize, Serialize};
 
 
+/// Path to represent a file.  
+/// This is [`tauri_plugin_fs::FilePath`] for compatibility.  
+/// 
+/// # Note
+/// In this crate, functions that take this as an argument will work correctly if it is the value returned by a function within this crate, at a minimum. 
+/// And [`FilePath::Path(_)`](tauri_plugin_fs::FilePath::Path) will not work in this crate.
+/// 
+/// # Typescript type
+/// ```typescript
+/// type DirPath = string
+/// ```
+pub type FilePath = tauri_plugin_fs::FilePath;
+
+/// Path to represent a directory.
+/// 
+/// # Typescript type
+/// ```typescript
+/// // typescript
+/// type DirPath = string
+/// ```
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct DirPath(pub(crate) String);
+
+/// Path to represent a file or directory.
+/// 
+/// # Typescript type
+/// ```typescript
+/// type EntryPath =
+///     | { type: "File", path: FilePath } 
+///     | { type: "Dir", path: DirPath }
+/// ```
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(tag = "type", content = "path")]
+pub enum EntryPath {
+
+    /// File path
+    File(FilePath),
+
+    /// Directory path
+    Dir(DirPath),
+}
+
+/// Access mode
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub enum PersistableAccessMode {
+
+    /// Read-only access.
+    ReadOnly,
+
+    /// Write-only access.
+    WriteOnly,
+
+    /// Read-write access.
+    ReadAndWrite,
+}
+
 /// Filters for VisualMediaPicker.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum VisualMediaTarget {
