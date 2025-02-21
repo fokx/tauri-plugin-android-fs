@@ -66,6 +66,14 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
+    fn remove_file(&self, _path: &FilePath) -> crate::Result<()> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn new_file(&self, _base_dir: &DirPath, _relative_path: impl AsRef<str>, _mime_type: Option<&str>) -> crate::Result<FilePath> {
+        Err(crate::Error::NotAndroid)
+    }
+
     fn show_save_file_dialog(
         &self,
         _default_file_name: impl AsRef<str>,

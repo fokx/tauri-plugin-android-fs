@@ -87,6 +87,46 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
+    fn remove_file(&self, path: &FilePath) -> crate::Result<()> {
+        impl_serde!(struct Req { path: String });
+        impl_serde!(struct Res;);
+
+        let path = crate::convert_file_path_to_string(&path);
+    
+        self.0  
+            .run_mobile_plugin::<Res>("removeFile", Req { path })
+            .map(|_| ())
+            .map_err(Into::into)
+    }
+
+    fn new_file(&self, base_dir: &DirPath, relative_path: impl AsRef<str>, mime_type: Option<&str>) -> crate::Result<FilePath> {
+        impl_serde!(struct Req<'a> { path: String, relative_path: &'a str, mime_type: &'a str });
+        impl_serde!(struct Res { path: FilePath });
+
+        let relative_path = relative_path.as_ref().trim_start_matches('/');
+        if relative_path.is_empty() {
+            return Err(PathError::Empty.into());
+        }
+        if relative_path.ends_with('/') {
+            return Err(PathError::DoesNotContainFileName.into());
+        }
+        if relative_path.chars()
+            .collect::<Vec<_>>()
+            .windows(2)
+            .any(|w| w[0] == '/' && w[1] == '/') {
+    
+            return Err(PathError::ConsecutiveSeparator.into());
+        }
+
+        let mime_type = mime_type.as_ref().map(|s| s.as_ref()).unwrap_or("application/octet-stream");
+        let path = crate::convert_dir_path_to_string(&base_dir);
+    
+        self.0  
+            .run_mobile_plugin::<Res>("createFileInDir", Req { path, relative_path, mime_type })
+            .map(|v| v.path)
+            .map_err(Into::into)
+    }
+
     fn show_open_dir_dialog(&self) -> crate::Result<Option<DirPath>> {
         impl_serde!(struct Res { path: Option<DirPath> });
     

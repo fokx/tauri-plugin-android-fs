@@ -127,9 +127,69 @@ class GetDirNameArgs {
     lateinit var path: String
 }
 
+@InvokeArg
+class RemoveFileArgs {
+    lateinit var path: String
+}
+
+@InvokeArg
+class CreateFileInDirArgs {
+    lateinit var path: String
+    lateinit var relativePath: String
+    lateinit var mimeType: String
+}
+
 @TauriPlugin
 class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
     private val isVisualMediaPickerAvailable = ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()
+
+    @Command
+    fun createFileInDir(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(CreateFileInDirArgs::class.java)
+            val tmp = args.relativePath.split("/").filter { it.isNotEmpty() }
+            val name = tmp.last()
+
+            var currentDir = DocumentFile.fromTreeUri(activity, Uri.parse(args.path)) ?: throw Error("Failed to get dir")
+            for (term in tmp.dropLast(1)) {
+                if (currentDir.findFile(term) == null) {
+                    currentDir.createDirectory(term)
+                }
+                currentDir = currentDir.findFile(term) ?: throw Error("Failed to create sub dir")
+            }
+
+            val uri = currentDir.createFile(args.mimeType, name)?.uri ?: throw Error("Failed to create file")
+            
+            val res = JSObject()
+            res.put("path", uri.toString())
+            invoke.resolve(res)
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke createFileInDir."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun removeFile(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(RemoveFileArgs::class.java)
+            val uri = Uri.parse(args.path)
+            if (DocumentFile.fromSingleUri(activity, uri)?.delete() == true) {
+                invoke.resolve()
+            }
+            else {
+                activity.contentResolver.delete(uri, null, null)
+                invoke.resolve()
+            }
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke removeFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
 
     @Command
     fun showOpenDirDialog(invoke: Invoke) {
@@ -176,7 +236,7 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
             invoke.resolve(res)
         }
         catch (ex: Exception) {
-            val message = ex.message ?: "Failed to invoke showOpenDirDialog."
+            val message = ex.message ?: "Failed to invoke readDir."
             Logger.error(message)
             invoke.reject(message)
         }
@@ -481,13 +541,7 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
     fun savePublicFileAfterFailedWrite(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(SavePublicFileAfterWriteArgs::class.java)
-
-            // Android10以上はdelete呼び出しに複雑な手続きが必要だが、
-            // Android10以上は IS_PENDING = true が7日続くと自動的に削除されるためなくてもいい
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                activity.contentResolver.delete(Uri.parse(args.path), null, null)
-            }
-
+            activity.contentResolver.delete(Uri.parse(args.path), null, null)
             invoke.resolve()
         }
         catch (ex: Exception) {

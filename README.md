@@ -114,5 +114,8 @@ fn example(app: tauri::AppHandle) {
 }
 ```
 
+# Link
+- [Changelog](https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/CHANGES.md)
+
 # License
 MIT OR Apache-2.0

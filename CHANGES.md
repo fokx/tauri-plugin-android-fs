@@ -1,3 +1,9 @@
+# Version 1.6.0
+- Add `AndroidFs::remove_file`.
+- Add `AndroidFs::new_file`.
+- Add `AndroidFs::new_file_with_contents`.
+- Update documents.
+
 # Version 1.5.0
 - Deprecate `AndroidFs::take_persistable_read_permission`.
 - Deprecate `AndroidFs::take_persistable_write_permission`.

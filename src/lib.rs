@@ -153,6 +153,7 @@ pub trait AndroidFs {
 
     /// Get the directory name.
     /// 
+    /// # Note
     /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
     /// 
     /// # Support
@@ -163,6 +164,7 @@ pub trait AndroidFs {
     /// If the type is unknown, this returns None. 
     /// And this mime type might differ from the file name extension.  
     /// 
+    /// # Note
     /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`], or [`AndroidFs::show_save_file_dialog`].  
     /// 
     /// # Support
@@ -173,6 +175,7 @@ pub trait AndroidFs {
     /// 
     /// If you only need to read the entire file contents, consider using [`AndroidFs::read`] or [`AndroidFs::read_to_string`] instead.  
     /// 
+    /// # Note
     /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
@@ -187,10 +190,12 @@ pub trait AndroidFs {
         self.create_file(path)
     }
 
-    /// Opens a file in write-only mode from ***writable*** `FilePath`.  
+    /// ***Opens*** a file in write-only mode from ***writable*** `FilePath`.  
     /// This function will create a file if it does not exist, and will truncate it if it does.  
     /// 
     /// If you only need to write the contents, consider using [`AndroidFs::write`] instead.  
+    /// If you want to create a new file with [`DirPath`], use [`AndroidFs::new_file`].  
+    /// If you want to create a new file, use [`PublicStorage::write`], [`PrivateStorage::write`].  
     /// 
     /// # Note
     /// A **writable** `FilePath` can be obtained from [`AndroidFs::show_save_file_dialog`], 
@@ -219,6 +224,52 @@ pub trait AndroidFs {
         Ok(buf)
     }
 
+    /// Creates a new file at the specified location, and return **writable** `FilePath`.    
+    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
+    /// 
+    /// If you only need to write the contents, consider using [`AndroidFs::new_file_with_contents`]  instead.  
+    /// 
+    /// # Note
+    /// `mime_type`  specify the type of the file to be created. 
+    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn new_file(
+        &self,
+        base_dir: &DirPath, 
+        relative_path: impl AsRef<str>, 
+        mime_type: Option<&str>
+    ) -> crate::Result<FilePath>;
+
+    /// Creates a new file at the specified location, and write the entire contents, then return **writable** `FilePath`.    
+    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
+    /// 
+    /// # Note
+    /// `mime_type`  specify the type of the file to be created. 
+    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn new_file_with_contents(
+        &self,
+        base_dir: &DirPath, 
+        relative_path: impl AsRef<str>, 
+        mime_type: Option<&str>,
+        contents: impl AsRef<[u8]>,
+    ) -> crate::Result<FilePath> {
+
+        let path = self.new_file(base_dir, relative_path, mime_type)?;
+        self.write(&path, contents)?;
+        Ok(path)
+    }
+
+    /// Remove the file from the **writable** `FilePath`.
+    /// 
+    /// # Support
+    /// All Android version.
+    fn remove_file(&self, path: &FilePath) -> crate::Result<()>;
+
     /// Reads the entire contents of a file into a string.  
     /// 
     /// If you need to operate on a readable file, use [`AndroidFs::open_file`] instead.  
@@ -240,6 +291,7 @@ pub trait AndroidFs {
 
     /// Returns the paths of the entries within the specified directory.  
     /// 
+    /// # Note
     /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
     /// 
     /// # Support
@@ -257,9 +309,9 @@ pub trait AndroidFs {
     /// 
     /// # Support
     /// All Android version.
-    fn write(&self, path: &FilePath, contetns: impl AsRef<[u8]>) -> crate::Result<()> {
+    fn write(&self, path: &FilePath, contents: impl AsRef<[u8]>) -> crate::Result<()> {
         let mut file = self.create_file(path)?;
-        file.write_all(contetns.as_ref())?;
+        file.write_all(contents.as_ref())?;
         Ok(())
     }
 
@@ -315,12 +367,22 @@ pub trait AndroidFs {
     /// allowing the app to read and write any file in the selected directory and its subdirectories.  
     /// If canceled by the user, return None.    
     /// 
+    /// [`AndroidFs::new_file`] can be used to create a new file in the directory from which it was obtained.
+    /// 
     /// # Note
     /// By default, this [`DirPath`] is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::grant_persistable_dir_access`].
     /// 
     /// # Support
     /// All Android version.
+    ///
+    /// # Related functions
+    /// - [`AndroidFs::new_file`]
+    /// - [`AndroidFs::new_file_with_contents`]
+    /// - [`AndroidFs::read_dir`]
+    /// - [`AndroidFs::get_dir_name`]  
+    /// - [`AndroidFs::grant_persistable_dir_access`]  
+    /// - etc...
     fn show_open_dir_dialog(&self) -> crate::Result<Option<DirPath>>;
 
     /// Open a dialog for file saving, and write contents to the selected file, then return that path.    
@@ -429,6 +491,7 @@ pub trait AndroidFs {
     }
 
     /// Use [`AndroidFs::grant_persistable_file_access`] instead.  
+    /// 
     /// This is same as following.
     /// ```ignore
     /// self.grant_persistable_file_access(path, PersistableAccessMode::WriteOnly)
@@ -463,15 +526,15 @@ pub trait AndroidFs {
 /// File storage that is available to other applications and users.
 pub trait PublicStorage {
 
-    /// Save the contents to public storage.  
+    /// Save the contents to public storage, and return **writable** `FilePath`.  
     /// This is used when saving a file for access by other applications and users.  
-    /// 
-    /// When storing media files such as images, videos, and audio, consider using [`PublicStorage::write_image`] or a similar method.  
-    /// For saving a general-purpose file, it is often better to use [`AndroidFs::show_save_file_dialog`].  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
     /// 
     /// If you want to operate directly on a write-only file, use [`PublicStorage::write_with_contents_writer`] insted.  
+    /// 
+    /// When storing media files such as images, videos, and audio, consider using [`PublicStorage::write_image`] or a similar method.  
+    /// For saving a general-purpose file, it is often better to use [`AndroidFs::show_save_file_dialog`].  
     /// 
     /// # Note
     /// Do not save files directly in the base directory. 
@@ -496,7 +559,7 @@ pub trait PublicStorage {
         )
     }
 
-    /// Save the contents as an image file to public storage.  
+    /// Save the contents as an image file to public storage, and return **writable** `FilePath`.   
     /// This is used when saving a file for access by other applications and users.  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
@@ -529,7 +592,7 @@ pub trait PublicStorage {
         )
     }
 
-    /// Save the contents as an video file to public storage.  
+    /// Save the contents as an video file to public storage, and return **writable** `FilePath`.  
     /// This is used when saving a file for access by other applications and users.  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
@@ -562,7 +625,7 @@ pub trait PublicStorage {
         )
     }
 
-    /// Save the contents as an audio file to public storage.  
+    /// Save the contents as an audio file to public storage, and return **writable** `FilePath`.    
     /// This is used when saving a file for access by other applications and users.  
     /// 
     /// If the same file name already exists, a sequential number is added to the name and saved.  
