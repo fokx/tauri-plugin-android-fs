@@ -1,5 +1,6 @@
 # Version 2.0.0
 - Fix issue where `AndroidFs::get_dir_name` isn’t returning the correct directory name.
+- Fix issue where `AndroidFs::read_dir` isn’t returning the correct subdirectory path.
 - Fix issue where `AndroidFs::new_file` isn’t creating the file in the correct location.
 - Add `#[non_exhaustive]` attributes to some enums
 - Remove `AndroidFs::open_file_writable`
