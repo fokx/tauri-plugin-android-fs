@@ -23,7 +23,7 @@
 //! There are three main ways to manipulate files:
 //!
 //! ### 1. Dialog
-//! Opens the file picker to read and write user-selected files.
+//! Opens the file/folder picker to read and write user-selected entries.
 //!
 //! ```no_run
 //! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt};
@@ -51,7 +51,11 @@
 //!         }
 //!     }
 //! }
-//!
+//! ```
+//! 
+//! ```no_run
+//! use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt};
+//! 
 //! fn write_file(app: tauri::AppHandle) {
 //!     let api = app.android_fs();
 //!     let selected_path = api.show_save_file_dialog(

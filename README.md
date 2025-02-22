@@ -23,7 +23,7 @@ pub fn run() {
 There are three main ways to manipulate files:
 
 ### 1. Dialog
-Opens the file picker to read and write user-selected files.
+Opens the file/folder picker to read and write user-selected entries.
 
 ```rust
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt};
@@ -51,6 +51,9 @@ fn read_files(app: tauri::AppHandle) {
         }
     }
 }
+```
+```rust
+use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt};
 
 fn write_file(app: tauri::AppHandle) {
     let api = app.android_fs();
