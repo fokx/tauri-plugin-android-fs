@@ -19,14 +19,6 @@ class DirUtils {
     //---------------------------------------------------------------------------------//
 
 
-    //---------------------------------------------------------------------------------//
-    // 以下、ACTION_OPEN_DOCUMENT_TREEで直接選択されたフォルダをTopTreeと呼称する。
-    // DocumentFile.fromTreeUriはTopTreeでしか正しく動作しないことに注意。
-    // TopTree内のサブフォルダを指定してもエラーにならず、代わりにTopTreeのフォルダが返されてしまう。
-    // またDocumentFileにあるlistFilesやfindFileなどのメソッドはとても遅いので使うべきでない。
-    //---------------------------------------------------------------------------------//
-
-
     fun createFile(
         activity: Context,
         dir: DirPath,
@@ -69,55 +61,29 @@ class DirUtils {
         dir: DirPath
     ): String {
 
-        val terms = dir.relativeTerms
         val topTreeUri = Uri.parse(dir.topTreeUri)
-        val parentUri = when (terms.size) {
-            // termがない場合はtopTree自身を指しているため、これの名前を取得して返す
-            0 -> {
-                return DocumentFile.fromTreeUri(activity, topTreeUri)?.name
-                    ?: throw Error("Failed to get name from $topTreeUri")
-            }
-            // termが1つのみの場合はtopTree直下のサブフォルダであるのでtopTreeが親となる
-            1 -> {
-                DocumentsContract.buildChildDocumentsUriUsingTree(
-                    topTreeUri,
-                    DocumentsContract.getTreeDocumentId(topTreeUri)
-                )
-            }
-            // termが２つ以上の時、後ろから1つめのtermを親とする
-            else -> {
-                DocumentsContract.buildChildDocumentsUriUsingTree(
-                    topTreeUri,
-                    terms[terms.size - 2]
-                )
-            }
-        }
-        val targetId = terms.last()
-
+        val targetUri = DocumentsContract.buildDocumentUriUsingTree(
+            topTreeUri,
+            dir.relativeTerms.lastOrNull() ?: DocumentsContract.getTreeDocumentId(topTreeUri)
+        )
+           
         val cursor = activity.contentResolver.query(
-            parentUri,
-            arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME
-            ),
+            targetUri,
+            arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
             null,
             null,
             null
         )
 
         cursor?.use {
-            val idColumnIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
             val nameColumnIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
 
-            while (cursor.moveToNext()) {
-                val id = cursor.getString(idColumnIndex)
-                if (id == targetId) {
-                    return cursor.getString(nameColumnIndex)
-                }
+            if (cursor.moveToFirst()) {
+                return cursor.getString(nameColumnIndex)
             }
         }
 
-        throw Error("Failed to find name from { parent: $parentUri, id: $targetId }")
+        throw Error("Failed to find file: $targetUri")
     }
 
     // 指定したフォルダ内の要素を全て取得する
@@ -128,20 +94,11 @@ class DirUtils {
     ): JSArray {
 
         val ids = dir.relativeTerms
-        val targetId = ids.lastOrNull()
         val topTreeUri = Uri.parse(dir.topTreeUri)
-        val targetUri = if (targetId == null) {
-            DocumentsContract.buildChildDocumentsUriUsingTree(
-                topTreeUri,
-                DocumentsContract.getTreeDocumentId(topTreeUri)
-            )
-        }
-        else {
-            DocumentsContract.buildChildDocumentsUriUsingTree(
-                topTreeUri,
-                targetId
-            )
-        }
+        val targetUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+            topTreeUri,
+            ids.lastOrNull() ?: DocumentsContract.getTreeDocumentId(topTreeUri)
+        )
 
         val buffer = JSArray()
         val cursor = activity.contentResolver.query(

@@ -1,14 +1,16 @@
+# Version 2.0.1
+- Improve performance of `AndroidFs::get_dir_name`
+- Update documentation.
+
 # Version 2.0.0
 - Fix issue where `AndroidFs::get_dir_name` isn’t returning the correct directory name.
 - Fix issue where `AndroidFs::read_dir` isn’t returning the correct subdirectory path.
 - Fix issue where `AndroidFs::new_file` isn’t creating the file in the correct location.
 - Add `#[non_exhaustive]` attributes to some enums
-- Remove `AndroidFs::open_file_writable`
-- Remove `AndroidFs::pubic_storage`.
-- Change `convert_string_to_dir_path`
-- Change `convert_dir_path_to_string`
+- Remove some deprecated functions.
+- Change `convert_string_to_dir_path` and return-value format.
+- Change `convert_dir_path_to_string` and return-value format.
 - Change `AndroidFs::read_dir`.
-- Change format of `DirPath`
 - Change `Error::PluginInvoke(anyhow::Error)` to `Error::PluginInvoke(String)`
 - Update documentation.
 

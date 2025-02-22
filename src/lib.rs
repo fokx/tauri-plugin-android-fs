@@ -145,6 +145,9 @@ pub trait AndroidFs {
 
     /// Get the file name.  
     /// 
+    /// # Note
+    /// This is a little slow.  
+    /// 
     /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
@@ -154,6 +157,8 @@ pub trait AndroidFs {
     /// Get the directory name.
     /// 
     /// # Note
+    /// This is a little slow.  
+    /// 
     /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
     /// 
     /// # Support
@@ -201,6 +206,7 @@ pub trait AndroidFs {
     /// 
     /// If you need to operate on a readable file, use [`AndroidFs::open_file`] instead.  
     /// 
+    /// # Note
     /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
@@ -282,9 +288,12 @@ pub trait AndroidFs {
     }
 
     /// Returns the names and paths of the entries within the specified directory.  
-    /// The paths are  **writable** [`FilePath`] or [`DirPath`].
+    /// The paths are **writable** [`FilePath`] or [`DirPath`].
     /// 
     /// # Note
+    /// It also retrieves hidden files and directories, such as the system-generated cache folder `.thumbnails`. 
+    /// Filter these if necessary.  
+    /// 
     /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
     /// 
     /// # Support
@@ -359,8 +368,6 @@ pub trait AndroidFs {
     /// Open a dialog for directory selection,
     /// allowing the app to read and write any file in the selected directory and its subdirectories.  
     /// If canceled by the user, return None.    
-    /// 
-    /// [`AndroidFs::new_file`] can be used to create a new file in the directory from which it was obtained.
     /// 
     /// # Note
     /// By default, this [`DirPath`] is valid until the app is terminated. 
@@ -1046,7 +1053,8 @@ pub fn convert_file_path_to_string(path: &FilePath) -> String {
 
 /// Convert string to [`FilePath`].  
 /// 
-/// This does not query or validate the file system, so the value may be invalid even if it is not an error.  
+/// # Note
+/// This does not query or validate the file system.  
 pub fn convert_string_to_file_path(string: impl AsRef<str>) -> FilePath {
     let result: std::result::Result<_, std::convert::Infallible> = string.as_ref().parse();
 
@@ -1055,23 +1063,14 @@ pub fn convert_string_to_file_path(string: impl AsRef<str>) -> FilePath {
 }
 
 /// Convert [`DirPath`] to string.  
-/// 
-/// # Note
-/// The format of the returned string may change in the future as a breaking change, but only in a major version update.
-/// Any changes will be documented at the following link.  
-/// <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/CHANGES.md>
 pub fn convert_dir_path_to_string(path: &DirPath) -> serde_json::Result<String> {
     serde_json::to_string(path)
 }
 
 /// Convert string to [`DirPath`].  
-/// 
+///
 /// # Note
-/// The format of the returned string may change in the future as a breaking change, but only in a major version update.
-/// Any changes will be documented at the following link.  
-/// <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/CHANGES.md>  
-/// 
-/// This does not query or validate the file system, so the value may be invalid even if it is not an error.
+/// This does not query or validate the file system.
 pub fn convert_string_to_dir_path(string: impl AsRef<str>) -> serde_json::Result<DirPath> {
     serde_json::from_str(string.as_ref())
 }

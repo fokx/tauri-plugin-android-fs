@@ -17,7 +17,7 @@ pub type FilePath = tauri_plugin_fs::FilePath;
 /// Path to represent a directory.
 /// 
 /// # Typescript type
-/// You should use the following type because it may change in the future, and the inner value should not be used directly.  
+/// You should use the following type because it might change in the future, and the inner value should not be used directly.  
 /// ```typescript
 /// type DirPath = any
 /// ```
