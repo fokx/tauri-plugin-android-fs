@@ -1,3 +1,4 @@
+use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 
@@ -22,9 +23,9 @@ pub type FilePath = tauri_plugin_fs::FilePath;
 /// type DirPath = any
 /// ```
 /// 
-/// If the version of this crate is 2.x.x at least, it is guaranteed to be in the following format.  
+/// If the version of this crate is 2.x.x or 3.x.x at least, it is guaranteed to be in the following format.  
 /// ````typescript
-/// type DirPath_ver2XX = {
+/// type DirPath = {
 ///     topTreeUri: string,
 ///     relativeTerms: string[]
 /// }
@@ -36,23 +37,23 @@ pub struct DirPath {
     pub(crate) relative_terms: Vec<String>,
 }
 
-/// Path to represent a file or directory.
-/// 
-/// # Typescript type
-/// ```typescript
-/// type EntryPath =
-///     | { type: "File", path: FilePath } 
-///     | { type: "Dir", path: DirPath }
-/// ```
-#[derive(Clone, Deserialize, Serialize)]
-#[serde(tag = "type", content = "path")]
-pub enum EntryPath {
+/// File or directory
+#[derive(Clone)]
+pub enum Entry {
 
-    /// File path
-    File(FilePath),
+    File {
+        name: String,
+        path: FilePath,
+        last_modified: SystemTime,
+        byte_size: u64,
+        mime_type: String,
+    },
 
-    /// Directory path
-    Dir(DirPath),
+    Dir {
+        name: String,
+        path: DirPath,
+        last_modified: SystemTime,
+    }
 }
 
 /// Access mode
@@ -216,4 +217,11 @@ pub(crate) enum PublicDir {
 
     #[serde(untagged)]
     GeneralPurpose(PublicGeneralPurposeDir),
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(tag = "type", content = "path")]
+pub(crate) enum EntryPath {
+    File(FilePath),
+    Dir(DirPath),
 }

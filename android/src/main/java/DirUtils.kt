@@ -2,12 +2,10 @@ package com.plugin.android_fs
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
-import androidx.documentfile.provider.DocumentFile
 import android.provider.DocumentsContract
+import androidx.core.database.getStringOrNull
 import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
-
 
 class DirUtils {
 
@@ -66,7 +64,7 @@ class DirUtils {
             topTreeUri,
             dir.relativeTerms.lastOrNull() ?: DocumentsContract.getTreeDocumentId(topTreeUri)
         )
-           
+
         val cursor = activity.contentResolver.query(
             targetUri,
             arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
@@ -86,8 +84,6 @@ class DirUtils {
         throw Error("Failed to find file: $targetUri")
     }
 
-    // 指定したフォルダ内の要素を全て取得する
-    // Rustにおける { name: String, path: EntryPath } の Vec を返す
     fun getChildren(
         activity: Context,
         dir: DirPath
@@ -106,7 +102,9 @@ class DirUtils {
             arrayOf(
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_MIME_TYPE,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                DocumentsContract.Document.COLUMN_SIZE
             ),
             null,
             null,
@@ -117,13 +115,16 @@ class DirUtils {
             val idColumnIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
             val mimeTypeColumnIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE)
             val nameColumnIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+            val lastModifiedColumnIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+            val sizeColumnIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE)
             val topTreeUriString = topTreeUri.toString()
 
             while (cursor.moveToNext()) {
-                val mimeType = cursor.getString(mimeTypeColumnIndex)
-                val name = cursor.getString(nameColumnIndex)
+                val mimeType = cursor.getStringOrNull(mimeTypeColumnIndex) ?: "application/octet-stream"
                 val id = cursor.getString(idColumnIndex)
-                val path = if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
+                val isDir = mimeType == DocumentsContract.Document.MIME_TYPE_DIR
+
+                val path = if (isDir) {
                     val path = JSObject()
                     path.put("topTreeUri", topTreeUriString)
                     path.put("relativeTerms", JSArray(ids.plus(id)))
@@ -141,9 +142,16 @@ class DirUtils {
                     obj
                 }
 
+                val lastModified = cursor.getLong(lastModifiedColumnIndex)
+                val size = cursor.getLong(sizeColumnIndex)
+                val name = cursor.getString(nameColumnIndex)
+
                 val obj = JSObject()
                 obj.put("name", name)
                 obj.put("path", path)
+                obj.put("mimeType", mimeType)
+                obj.put("lastModified", lastModified)
+                obj.put("byteSize", size)
                 buffer.put(obj)
             }
         }

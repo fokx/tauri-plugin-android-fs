@@ -152,8 +152,6 @@ pub trait AndroidFs {
     /// # Note
     /// This is a little slow.  
     /// 
-    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`].  
-    /// 
     /// # Support
     /// All Android version.
     fn get_file_name(&self, path: &FilePath) -> crate::Result<String>;
@@ -163,29 +161,23 @@ pub trait AndroidFs {
     /// # Note
     /// This is a little slow.  
     /// 
-    /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
-    /// 
     /// # Support
     /// All Android version.
     fn get_dir_name(&self, path: &DirPath) -> crate::Result<String>;
 
-    /// Get the mime type.  
-    /// If the type is unknown, this returns None. 
-    /// And this mime type might differ from the file name extension.  
+    /// Query provider for mime type.  
+    /// If the type is unknown, this returns `application/octet-stream`.  
     /// 
     /// # Note
-    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`], [`AndroidFs::show_open_visual_media_dialog`], or [`AndroidFs::show_save_file_dialog`].  
+    /// This is a little slow.  
     /// 
     /// # Support
     /// All Android version.
-    fn get_mime_type(&self, path: &FilePath) -> crate::Result<Option<String>>;
+    fn get_mime_type(&self, path: &FilePath) -> crate::Result<String>;
 
     /// Open a file in read-only mode.
     /// 
     /// If you only need to read the entire file contents, consider using [`AndroidFs::read`] or [`AndroidFs::read_to_string`] instead.  
-    /// 
-    /// # Note
-    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
     /// All Android version.
@@ -209,9 +201,6 @@ pub trait AndroidFs {
     /// Reads the entire contents of a file into a bytes vector.  
     /// 
     /// If you need to operate on a readable file, use [`AndroidFs::open_file`] instead.  
-    /// 
-    /// # Note
-    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
     /// 
     /// # Support
     /// All Android version.
@@ -276,8 +265,6 @@ pub trait AndroidFs {
     /// 
     /// If you need to operate on a readable file, use [`AndroidFs::open_file`] instead.  
     /// 
-    /// `FilePath` can be obtained from functions such as [`AndroidFs::show_open_file_dialog`] or [`AndroidFs::show_open_visual_media_dialog`].  
-    /// 
     /// # Support
     /// All Android version.
     fn read_to_string(&self, path: &FilePath) -> crate::Result<String> {
@@ -291,8 +278,8 @@ pub trait AndroidFs {
         Ok(buf)
     }
 
-    /// Returns the names and paths of the entries within the specified directory.  
-    /// The paths are **writable** [`FilePath`] or [`DirPath`].
+    /// Returns the unordered entries within the specified directory.  
+    /// Returned [`Entry`](crate::Entry) contains **writable** [`FilePath`] or [`DirPath`].  
     /// 
     /// # Note
     /// It also retrieves hidden files and directories, such as the system-generated cache folder `.thumbnails`. 
@@ -302,7 +289,7 @@ pub trait AndroidFs {
     /// 
     /// # Support
     /// All Android version.
-    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<(String, EntryPath)>>;
+    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<Entry>>;
 
     /// Writes a slice as the entire contents of a file in a **writable** `FilePath`.  
     /// This function will create a file if it does not exist, and will entirely replace its contents if it does.  

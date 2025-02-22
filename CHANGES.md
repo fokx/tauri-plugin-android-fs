@@ -1,3 +1,10 @@
+# Version 3.0.0
+- Add `Entry`
+- Remove `EntryPath`
+- Change `AndroidFs::read_dir`
+- Change `AndroidFs::get_mime_type`
+- Update documentation.
+
 # Version 2.0.1
 - Improve performance of `AndroidFs::get_dir_name`
 - Update documentation.

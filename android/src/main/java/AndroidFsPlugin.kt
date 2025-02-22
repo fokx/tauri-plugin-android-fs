@@ -280,7 +280,15 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
     fun getMimeType(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(GetMimeTypeArgs::class.java)
-            val type = activity.contentResolver.getType(Uri.parse(args.path))
+            val uri = Uri.parse(args.path)
+
+            activity.contentResolver.query(uri, arrayOf(), null, null, null).use {
+                if (it?.moveToFirst() != true) {
+                    throw Error("Failed to find file: $uri")
+                }
+            }
+
+            val type = activity.contentResolver.getType(uri)
             val res = JSObject()
             res.put("value", type)
             invoke.resolve(res)

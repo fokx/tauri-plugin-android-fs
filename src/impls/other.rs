@@ -24,7 +24,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn get_mime_type(&self, _path: &FilePath) -> crate::Result<Option<String>> {
+    fn get_mime_type(&self, _path: &FilePath) -> crate::Result<String> {
         Err(crate::Error::NotAndroid)
     }
 
@@ -58,7 +58,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn read_dir(&self, _path: &DirPath) -> crate::Result<Vec<(String, EntryPath)>> {
+    fn read_dir(&self, _path: &DirPath) -> crate::Result<Vec<Entry>> {
         Err(crate::Error::NotAndroid)
     }
 

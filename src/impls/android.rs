@@ -1,4 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize, Deserialize};
+use std::time::{SystemTime, UNIX_EPOCH, Duration};
 use tauri::{plugin::{PluginApi, PluginHandle}, AppHandle, Runtime};
 use crate::{models::*, PathError, AndroidFs, FilePath, PrivateStorage, PublicStorage};
 
@@ -45,7 +46,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
-    fn get_mime_type(&self, path: &FilePath) -> crate::Result<Option<String>> {
+    fn get_mime_type(&self, path: &FilePath) -> crate::Result<String> {
         impl_serde!(struct Req { path: String });
         impl_serde!(struct Res { value: Option<String> });
 
@@ -53,7 +54,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
 
         self.0  
             .run_mobile_plugin::<Res>("getMimeType", Req { path })
-            .map(|v| v.value)
+            .map(|v| v.value.unwrap_or_else(|| "application/octet-stream".to_owned()))
             .map_err(Into::into)
     }
 
@@ -136,16 +137,34 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
-    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<(String, EntryPath)>> {
+    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<Entry>> {
         impl_serde!(struct Req { path: DirPath });
-        impl_serde!(struct Obj { name: String, path: EntryPath });
+        impl_serde!(struct Obj { name: String, path: EntryPath, last_modified: i64, byte_size: i64, mime_type: String });
         impl_serde!(struct Res { entries: Vec<Obj> });
 
         let path = path.clone();
     
         self.0  
             .run_mobile_plugin::<Res>("readDir", Req { path })
-            .map(|v| v.entries.into_iter().map(|v| (v.name, v.path)).collect())
+            .map(|v| 
+                v.entries
+                    .into_iter()
+                    .map(|v| match v.path {
+                        EntryPath::File(path) => Entry::File {
+                            name: v.name,
+                            last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
+                            byte_size: v.byte_size as u64,
+                            mime_type: v.mime_type,
+                            path,
+                        },
+                        EntryPath::Dir(path) => Entry::Dir {
+                            name: v.name,
+                            last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
+                            path,
+                        }
+                    })
+                    .collect()
+            )
             .map_err(Into::into)
     }
 
