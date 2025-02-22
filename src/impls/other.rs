@@ -58,7 +58,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn read_dir(&self, _path: &DirPath) -> crate::Result<Vec<EntryPath>> {
+    fn read_dir(&self, _path: &DirPath) -> crate::Result<Vec<(String, EntryPath)>> {
         Err(crate::Error::NotAndroid)
     }
 

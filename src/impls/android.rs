@@ -100,7 +100,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
     }
 
     fn new_file(&self, base_dir: &DirPath, relative_path: impl AsRef<str>, mime_type: Option<&str>) -> crate::Result<FilePath> {
-        impl_serde!(struct Req<'a> { path: String, relative_path: &'a str, mime_type: &'a str });
+        impl_serde!(struct Req<'a> { path: DirPath, relative_path: &'a str, mime_type: &'a str });
         impl_serde!(struct Res { path: FilePath });
 
         let relative_path = relative_path.as_ref().trim_start_matches('/');
@@ -119,7 +119,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         }
 
         let mime_type = mime_type.as_ref().map(|s| s.as_ref()).unwrap_or("application/octet-stream");
-        let path = crate::convert_dir_path_to_string(&base_dir);
+        let path = base_dir.clone();
     
         self.0  
             .run_mobile_plugin::<Res>("createFileInDir", Req { path, relative_path, mime_type })
@@ -136,23 +136,24 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
-    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<EntryPath>> {
-        impl_serde!(struct Req { path: String });
-        impl_serde!(struct Res { entries: Vec<EntryPath> });
+    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<(String, EntryPath)>> {
+        impl_serde!(struct Req { path: DirPath });
+        impl_serde!(struct Obj { name: String, path: EntryPath });
+        impl_serde!(struct Res { entries: Vec<Obj> });
 
-        let path = crate::convert_dir_path_to_string(path);
+        let path = path.clone();
     
         self.0  
             .run_mobile_plugin::<Res>("readDir", Req { path })
-            .map(|v| v.entries)
+            .map(|v| v.entries.into_iter().map(|v| (v.name, v.path)).collect())
             .map_err(Into::into)
     }
 
     fn get_dir_name(&self, path: &DirPath) -> crate::Result<String> {
-        impl_serde!(struct Req { path: String });
+        impl_serde!(struct Req { path: DirPath });
         impl_serde!(struct Res { name: String });
 
-        let path = crate::convert_dir_path_to_string(path);
+        let path = path.clone();
     
         self.0  
             .run_mobile_plugin::<Res>("getDirName", Req { path })
@@ -183,7 +184,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
     }
 
     fn grant_persistable_dir_access(&self, path: &DirPath, mode: PersistableAccessMode) -> crate::Result<()> {
-        self.take_persistable_permission(crate::convert_dir_path_to_string(path), mode)
+        self.take_persistable_permission(path.top_tree_uri.to_owned(), mode)
     }
 
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {

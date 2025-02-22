@@ -1,10 +1,23 @@
-# Version 1.6.0
+# Version 2.0.0
+- Fix issue where `AndroidFs::get_dir_name` isn’t returning the correct directory name.
+- Fix issue where `AndroidFs::new_file` isn’t creating the file in the correct location.
+- Add `#[non_exhaustive]` attributes to some enums
+- Remove `AndroidFs::open_file_writable`
+- Remove `AndroidFs::pubic_storage`.
+- Change `convert_string_to_dir_path`
+- Change `convert_dir_path_to_string`
+- Change `AndroidFs::read_dir`.
+- Change format of `DirPath`
+- Change `Error::PluginInvoke(anyhow::Error)` to `Error::PluginInvoke(String)`
+- Update documentation.
+
+# ~~Version 1.6.0~~ (***Yanked***)
 - Add `AndroidFs::remove_file`.
 - Add `AndroidFs::new_file`.
 - Add `AndroidFs::new_file_with_contents`.
-- Update documents.
+- Update documentation.
 
-# Version 1.5.0
+# ~~Version 1.5.0~~ (***Yanked***)
 - Deprecate `AndroidFs::take_persistable_read_permission`.
 - Deprecate `AndroidFs::take_persistable_write_permission`.
 - Add `DirPath`.
@@ -17,34 +30,34 @@
 - Add `AndroidFs::get_dir_name`.
 - Add `AndroidFs::grant_persistable_file_access`.
 - Add `AndroidFs::grant_persistable_dir_access`.
-- Update documents.
+- Update documentation.
 - Remove files that should not be included.
 
 # Version 1.4.2
 - Remove files that should not be included.
 
 # Version 1.4.1
-- Update documents.
+- Update documentation.
 
 # Version 1.4.0
 - Add `AndroidFs::take_persistable_read_permission`.
 - Add `AndroidFs::take_persistable_write_permission`.
 - Add `convert_string_to_file_path`.
 - Add `convert_file_path_to_string`.
-- Update documents.
+- Update documentation.
 
 # Version 1.3.2
-- Update documents.
+- Update documentation.
 
 # Version 1.3.1
-- Update documents.
+- Update documentation.
 
 # Version 1.3.0
 - Deprecate `AndroidFs::open_file_writable`.
 - Add `AndroidFs::create_file`.
 - Add `PrivateStorage::create_file`.
-- Update documents.
+- Update documentation.
 
 # Version 1.2.0
 - Add `AndroidFs::get_mime_type`.
-- Update documents.
+- Update documentation.

@@ -17,13 +17,24 @@ pub type FilePath = tauri_plugin_fs::FilePath;
 /// Path to represent a directory.
 /// 
 /// # Typescript type
+/// You should use the following type because it may change in the future, and the inner value should not be used directly.  
 /// ```typescript
-/// // typescript
-/// type DirPath = string
+/// type DirPath = any
 /// ```
+/// 
+/// If the version of this crate is 2.x.x at least, it is guaranteed to be in the following format.  
+/// ````typescript
+/// type DirPath_ver2XX = {
+///     topTreeUri: string,
+///     relativeTerms: string[]
+/// }
+/// ``````
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct DirPath(pub(crate) String);
+#[serde(rename_all = "camelCase")]
+pub struct DirPath {
+    pub(crate) top_tree_uri: String,
+    pub(crate) relative_terms: Vec<String>,
+}
 
 /// Path to represent a file or directory.
 /// 
@@ -74,6 +85,7 @@ pub enum VisualMediaTarget {
 
 /// The application specific directory.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
 pub enum PrivateDir {
 
     /// The application specific persistent-data directory.  
@@ -98,6 +110,7 @@ pub enum PrivateDir {
 
 /// Directory in which to place images that are available to other applications and users.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
 pub enum PublicImageDir {
 
     /// Standard directory in which to place pictures that are available to the user.  
@@ -113,6 +126,7 @@ pub enum PublicImageDir {
 
 /// Directory in which to place videos that are available to other applications and users.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
 pub enum PublicVideoDir {
 
 	/// Standard directory in which to place movies that are available to the user.  
@@ -128,6 +142,7 @@ pub enum PublicVideoDir {
 
 /// Directory in which to place audios that are available to other applications and users.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
 pub enum PublicAudioDir {
 
     /// Standard directory in which to place movies that are available to the user.  
@@ -174,6 +189,7 @@ pub enum PublicAudioDir {
 
 /// Directory in which to place files that are available to other applications and users.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
 pub enum PublicGeneralPurposeDir {
 
     /// Standard directory in which to place documents that have been created by the user.  

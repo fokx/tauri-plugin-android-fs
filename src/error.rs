@@ -4,6 +4,7 @@ pub type Result<T> = std::result::Result<T, crate::Error>;
 
 /// Path error
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, thiserror::Error)]
+#[non_exhaustive]
 pub enum PathError {
 
     /// When the path contains consecutive separators.
@@ -24,6 +25,7 @@ pub enum PathError {
 }
 
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum Error {
 
     #[error("This device is not running Android. This plugin is only supported on Android.")]
@@ -35,15 +37,15 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
   
-    #[error(transparent)]
-    PluginInvoke(#[from] anyhow::Error),
+    #[error("{0}")]
+    PluginInvoke(String),
 }
 
 #[cfg(target_os = "android")]
 impl From<tauri::plugin::mobile::PluginInvokeError> for crate::Error {
 
     fn from(value: tauri::plugin::mobile::PluginInvokeError) -> Self {
-        Self::PluginInvoke(anyhow::anyhow!("{value}"))
+        Self::PluginInvoke(format!("{value}"))
     }
 }
 

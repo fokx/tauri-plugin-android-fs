@@ -182,14 +182,6 @@ pub trait AndroidFs {
     /// All Android version.
     fn open_file(&self, path: &FilePath) -> crate::Result<std::fs::File>;
 
-    /// This is deprecated. Because inappropriate fn name.  
-    /// Use [`AndroidFs::create_file`] insted.
-    #[deprecated(note = "Because inappropriate fn name. Use AndroidFs::create_file insted.")]
-    #[warn(deprecated)]
-    fn open_file_writable(&self, path: &FilePath) -> crate::Result<std::fs::File> {
-        self.create_file(path)
-    }
-
     /// ***Opens*** a file in write-only mode from ***writable*** `FilePath`.  
     /// This function will create a file if it does not exist, and will truncate it if it does.  
     /// 
@@ -289,14 +281,15 @@ pub trait AndroidFs {
         Ok(buf)
     }
 
-    /// Returns the paths of the entries within the specified directory.  
+    /// Returns the names and paths of the entries within the specified directory.  
+    /// The paths are  **writable** [`FilePath`] or [`DirPath`].
     /// 
     /// # Note
     /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
     /// 
     /// # Support
     /// All Android version.
-    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<EntryPath>>;
+    fn read_dir(&self, path: &DirPath) -> crate::Result<Vec<(String, EntryPath)>>;
 
     /// Writes a slice as the entire contents of a file in a **writable** `FilePath`.  
     /// This function will create a file if it does not exist, and will entirely replace its contents if it does.  
@@ -510,14 +503,6 @@ pub trait AndroidFs {
 
     /// File storage API intended to be shared with other apps.
     fn public_storage(&self) -> &impl PublicStorage;
-
-    /// This is typo and deprecated.  
-    /// Use [`AndroidFs::public_storage`] instead.
-    #[deprecated(note = "This is typo. Use AndroidFs::public_storage instead.")]
-    #[warn(deprecated)]
-    fn pubic_storage(&self) -> &impl PublicStorage {
-        self.public_storage()
-    }
 
     /// File storage API intended for the app’s use only.
     fn private_storage(&self) -> &impl PrivateStorage;
@@ -1061,8 +1046,7 @@ pub fn convert_file_path_to_string(path: &FilePath) -> String {
 
 /// Convert string to [`FilePath`].  
 /// 
-/// # Note
-/// This does not validate the value and will not cause an error or panic if an incorrect value is provided.
+/// This does not query or validate the file system, so the value may be invalid even if it is not an error.  
 pub fn convert_string_to_file_path(string: impl AsRef<str>) -> FilePath {
     let result: std::result::Result<_, std::convert::Infallible> = string.as_ref().parse();
 
@@ -1070,15 +1054,24 @@ pub fn convert_string_to_file_path(string: impl AsRef<str>) -> FilePath {
     result.unwrap()
 }
 
-/// Convert [`DirPath`] to string.
-pub fn convert_dir_path_to_string(path: &DirPath) -> String {
-    path.0.to_owned()
+/// Convert [`DirPath`] to string.  
+/// 
+/// # Note
+/// The format of the returned string may change in the future as a breaking change, but only in a major version update.
+/// Any changes will be documented at the following link.  
+/// <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/CHANGES.md>
+pub fn convert_dir_path_to_string(path: &DirPath) -> serde_json::Result<String> {
+    serde_json::to_string(path)
 }
 
 /// Convert string to [`DirPath`].  
 /// 
 /// # Note
-/// This does not validate the value and will not cause an error or panic if an incorrect value is provided.
-pub fn convert_string_to_dir_path(string: impl AsRef<str>) -> DirPath {
-    DirPath(string.as_ref().to_owned())
+/// The format of the returned string may change in the future as a breaking change, but only in a major version update.
+/// Any changes will be documented at the following link.  
+/// <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/CHANGES.md>  
+/// 
+/// This does not query or validate the file system, so the value may be invalid even if it is not an error.
+pub fn convert_string_to_dir_path(string: impl AsRef<str>) -> serde_json::Result<DirPath> {
+    serde_json::from_str(string.as_ref())
 }

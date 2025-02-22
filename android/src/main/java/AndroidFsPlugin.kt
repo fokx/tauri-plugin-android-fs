@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -118,50 +119,45 @@ enum class BaseDir {
 }
 
 @InvokeArg
-class ReadDirArgs {
-    lateinit var path: String
-}
-
-@InvokeArg
-class GetDirNameArgs {
-    lateinit var path: String
-}
-
-@InvokeArg
 class RemoveFileArgs {
     lateinit var path: String
 }
 
 @InvokeArg
+class ReadDirArgs {
+    lateinit var path: DirPath
+}
+
+@InvokeArg
 class CreateFileInDirArgs {
-    lateinit var path: String
+    lateinit var path: DirPath
     lateinit var relativePath: String
     lateinit var mimeType: String
+}
+
+@InvokeArg
+class GetDirNameArgs {
+    lateinit var path: DirPath
+}
+
+@InvokeArg
+class DirPath {
+    lateinit var topTreeUri: String
+    lateinit var relativeTerms: Array<String>
 }
 
 @TauriPlugin
 class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
     private val isVisualMediaPickerAvailable = ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()
-
+    private val dirUtils = DirUtils()
+    
     @Command
     fun createFileInDir(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(CreateFileInDirArgs::class.java)
-            val tmp = args.relativePath.split("/").filter { it.isNotEmpty() }
-            val name = tmp.last()
 
-            var currentDir = DocumentFile.fromTreeUri(activity, Uri.parse(args.path)) ?: throw Error("Failed to get dir")
-            for (term in tmp.dropLast(1)) {
-                if (currentDir.findFile(term) == null) {
-                    currentDir.createDirectory(term)
-                }
-                currentDir = currentDir.findFile(term) ?: throw Error("Failed to create sub dir")
-            }
-
-            val uri = currentDir.createFile(args.mimeType, name)?.uri ?: throw Error("Failed to create file")
-            
             val res = JSObject()
-            res.put("path", uri.toString())
+            res.put("path", dirUtils.createFile(activity, args.path, args.relativePath, args.mimeType).toString())
             invoke.resolve(res)
         }
         catch (ex: Exception) {
@@ -172,12 +168,47 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
     }
 
     @Command
+    fun readDir(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ReadDirArgs::class.java)
+            val res = JSObject()
+            res.put("entries", dirUtils.getChildren(activity, args.path))
+            invoke.resolve(res)
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke readDir."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun getDirName(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(GetDirNameArgs::class.java)
+            val res = JSObject()
+            res.put("name", dirUtils.getName(activity, args.path))
+            invoke.resolve(res)
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke getDirName."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
     fun removeFile(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(RemoveFileArgs::class.java)
             val uri = Uri.parse(args.path)
-            if (DocumentFile.fromSingleUri(activity, uri)?.delete() == true) {
-                invoke.resolve()
+            if (DocumentsContract.isDocumentUri(activity, uri)) {
+                if (DocumentFile.fromSingleUri(activity, uri)?.delete() == true) {
+                    invoke.resolve()
+                }
+                else {
+                    invoke.reject("Failed to delete file: $uri")
+                }
             }
             else {
                 activity.contentResolver.delete(uri, null, null)
@@ -208,7 +239,18 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
     private fun dirDialogResult(invoke: Invoke, result: ActivityResult) {
         try {
             val res = JSObject()
-            res.put("path", result.data?.data?.toString())
+            
+            val uri = result.data?.data?.toString()
+            if (uri != null) {
+                val obj = JSObject()
+                obj.put("topTreeUri", uri)
+                obj.put("relativeTerms", JSArray())
+                res.put("path", obj)
+            }
+            else {
+                res.put("path", null)
+            }
+            
             invoke.resolve(res)
         }
         catch (ex: java.lang.Exception) {
@@ -218,52 +260,6 @@ class AndroidFsPlugin(private val activity: Activity): Plugin(activity) {
         }
     }
 
-    @Command
-    fun readDir(invoke: Invoke) {
-        try {
-            val args = invoke.parseArgs(ReadDirArgs::class.java)
-            val uri = Uri.parse(args.path)
-            val dir = DocumentFile.fromTreeUri(activity, uri) ?: throw Error("Invalid or permission denied URI: $uri")
-            val array = JSArray()
-            for (file in dir.listFiles()) {
-                val obj = JSObject()
-                obj.put("path", file.uri.toString())
-                obj.put("type", if (file.isFile) "File" else "Dir")
-                array.put(obj)
-            }
-            val res = JSObject()
-            res.put("entries", array)
-            invoke.resolve(res)
-        }
-        catch (ex: Exception) {
-            val message = ex.message ?: "Failed to invoke readDir."
-            Logger.error(message)
-            invoke.reject(message)
-        }
-    }
-
-    @Command
-    fun getDirName(invoke: Invoke) {
-        try {
-            val args = invoke.parseArgs(GetDirNameArgs::class.java)
-
-            val ret = JSObject()
-            val uri = Uri.parse(args.path)
-            val name = DocumentFile.fromTreeUri(activity, uri)?.name
-            if (name != null) {
-                ret.put("name", name)
-                invoke.resolve(ret)
-            }
-            else {
-                invoke.reject("Invalid or permission denied URI: $uri")
-            }
-        }
-        catch (ex: Exception) {
-            val message = ex.message ?: "Failed to invoke getDirName."
-            Logger.error(message)
-            invoke.reject(message)
-        }
-    }
 
     @Command
     fun getPrivateBaseDirAbsolutePaths(invoke: Invoke) {
