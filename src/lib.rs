@@ -278,12 +278,13 @@ pub trait AndroidFs {
         Ok(buf)
     }
 
-    /// Returns the unordered entries within the specified directory.  
+    /// Returns the unordered child entries of the specified directory.  
     /// Returned [`Entry`](crate::Entry) contains **writable** [`FilePath`] or [`DirPath`].  
-    /// 
+    ///
     /// # Note
-    /// It also retrieves hidden files and directories, such as the system-generated cache folder `.thumbnails`. 
-    /// Filter these if necessary.  
+    /// By default, child [`DirPath`] and [`FilePath`] are valid until the app is terminated.  
+    /// To persist child `FilePath` across app restarts, use [`AndroidFs::grant_persistable_dir_access`] on the **parent** `DirPath`.  
+    /// To persist child `DirPath` across app restarts, use [`AndroidFs::grant_persistable_dir_access`] on the parent or childself `DirPath`.  
     /// 
     /// `DirPath` can be obtained from functions such as [`AndroidFs::show_open_dir_dialog`].  
     /// 

@@ -1,3 +1,6 @@
+# Version 3.0.1
+- Update documentation.
+
 # Version 3.0.0
 - Add `Entry`
 - Remove `EntryPath`
