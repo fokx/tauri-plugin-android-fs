@@ -2,56 +2,73 @@ use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 
-/// Path to represent a file.  
-/// This is [`tauri_plugin_fs::FilePath`] for compatibility.  
+/// Path to represent a file or directory.
 /// 
 /// # Note
-/// In this crate, functions that take this as an argument will work correctly if it is the value returned by a function within this crate, at a minimum. 
-/// And [`FilePath::Path(_)`](tauri_plugin_fs::FilePath::Path) will not work in this crate.
+/// For compatibility, an interconversion to [`tauri_plugin_fs::FilePath`] is implemented, such as follwing. 
+/// But this may be lossy and also not guaranteed to work properly with other plugins.  
+/// ```no_run
+/// use tauri_plugin_android_fs::FileUri;
+/// use tauri_plugin_fs::FilePath;
 /// 
-/// # Typescript type
-/// ```typescript
-/// type DirPath = string
+/// let uri: FileUri = unimplemented!();
+/// 
+/// let path: FilePath = uri.into();
+/// let uri: FileUri = path.into();
 /// ```
-pub type FilePath = tauri_plugin_fs::FilePath;
-
-/// Path to represent a directory.
 /// 
 /// # Typescript type
 /// You should use the following type because it might change in the future, and the inner value should not be used directly.  
 /// ```typescript
 /// type DirPath = any
+/// type DirPath = string
 /// ```
-/// 
-/// If the version of this crate is 2.x.x or 3.x.x at least, it is guaranteed to be in the following format.  
-/// ````typescript
-/// type DirPath = {
-///     topTreeUri: string,
-///     relativeTerms: string[]
-/// }
-/// ``````
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DirPath {
-    pub(crate) top_tree_uri: String,
-    pub(crate) relative_terms: Vec<String>,
+pub struct FileUri {
+    pub(crate) uri: String,
+    pub(crate) document_top_tree_uri: Option<String>,
 }
 
-/// File or directory
-#[derive(Clone)]
+impl From<tauri_plugin_fs::FilePath> for FileUri {
+
+    fn from(value: tauri_plugin_fs::FilePath) -> Self {
+        let uri = match value {
+            tauri_plugin_fs::FilePath::Url(url) => url.to_string(),
+            tauri_plugin_fs::FilePath::Path(path_buf) => format!("file://{}", path_buf.to_string_lossy()),
+        };
+
+        Self { uri, document_top_tree_uri: None }
+    }
+}
+
+impl From<FileUri> for tauri_plugin_fs::FilePath {
+
+    fn from(value: FileUri) -> Self {
+        let result: std::result::Result<_, std::convert::Infallible> = value.uri.parse();
+
+        // This will not cause panic. Because result err is infallible.
+        result.unwrap()
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Entry {
 
+    #[non_exhaustive]
     File {
         name: String,
-        path: FilePath,
+        uri: FileUri,
         last_modified: SystemTime,
         byte_size: u64,
         mime_type: String,
     },
 
+    #[non_exhaustive]
     Dir {
         name: String,
-        path: DirPath,
+        uri: FileUri,
         last_modified: SystemTime,
     }
 }
@@ -68,6 +85,43 @@ pub enum PersistableAccessMode {
 
     /// Read-write access.
     ReadAndWrite,
+}
+
+/// Access mode
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum FileAccessMode {
+
+    /// Opens the file in read-only mode.
+    /// 
+    /// FileDescriptor mode: "r"
+    Read,
+
+    /// Opens the file in write-only mode.
+    /// The existing content is truncated (deleted), and new data is written from the beginning.
+    /// Creates a new file if it does not exist.
+    ///
+    /// FileDescriptor mode: "w"
+    Write,
+
+    /// Opens the file in write-only mode.
+    /// The existing content is preserved, and new data is appended to the end of the file.
+    /// Creates a new file if it does not exist.
+    /// 
+    /// FileDescriptor mode: "wa"
+    WriteAppend,
+
+    /// Opens the file in read-write mode.  
+    /// 
+    /// FileDescriptor mode: "rw"
+    ReadWrite,
+
+    /// Opens the file in read-write mode.
+    /// The existing content is truncated (deleted), and new data is written from the beginning.
+    /// Creates a new file if it does not exist.
+    ///
+    /// FileDescriptor mode: "rwt"
+    ReadWriteTruncate,
 }
 
 /// Filters for VisualMediaPicker.
@@ -109,103 +163,10 @@ pub enum PrivateDir {
     Cache,
 }
 
-/// Directory in which to place images that are available to other applications and users.  
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 #[non_exhaustive]
-pub enum PublicImageDir {
-
-    /// Standard directory in which to place pictures that are available to the user.  
-    /// 
-    /// ex: `~/Pictures`
-    Pictures,
-
-    /// The traditional location for pictures and videos when mounting the device as a camera.  
-    /// 
-    /// ex: `~/DCIM`
-    DCIM,
-}
-
-/// Directory in which to place videos that are available to other applications and users.  
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
-#[non_exhaustive]
-pub enum PublicVideoDir {
-
-	/// Standard directory in which to place movies that are available to the user.  
-	/// 
-	/// ex: `~/Movies`
-	Movies,
-
-	/// The traditional location for pictures and videos when mounting the device as a camera.  
-	/// 
-	/// ex: `~/DCIM`
-	DCIM,
-}
-
-/// Directory in which to place audios that are available to other applications and users.  
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
-#[non_exhaustive]
-pub enum PublicAudioDir {
-
-    /// Standard directory in which to place movies that are available to the user.  
-    /// 
-    /// ex: `~/Music`
-    Music,
-
-    /// Standard directory in which to place any audio files that should be in the list of alarms that the user can select (not as regular music).  
-    /// 
-    /// ex: `~/Alarms`
-    Alarms,
-
-    /// Standard directory in which to place any audio files that should be in the list of audiobooks that the user can select (not as regular music).  
-    /// 
-    /// This is not available on Android 9 (API level 28) and lower.  
-    /// Availability on a given device can be verified by calling [`PublicStorage::is_audiobooks_dir_available`](crate::PublicStorage::is_audiobooks_dir_available).  
-    /// 
-    /// ex: `~/Audiobooks`  
-    Audiobooks,
-
-    /// Standard directory in which to place any audio files that should be in the list of notifications that the user can select (not as regular music).  
-    /// 
-    /// ex: `~/Notifications`
-    Notifications,
-
-    /// Standard directory in which to place any audio files that should be in the list of podcasts that the user can select (not as regular music).  
-    /// 
-    /// ex: `~/Podcasts`
-    Podcasts,
-
-    /// Standard directory in which to place any audio files that should be in the list of ringtones that the user can select (not as regular music).  
-    /// 
-    /// ex: `~/Ringtones`
-    Ringtones,
-
-    /// Standard directory in which to place any audio files that should be in the list of voice recordings recorded by voice recorder apps that the user can select (not as regular music).   
-    /// 
-    /// This is not available on Android 11 (API level 30) and lower.  
-    /// Availability on a given device can be verified by calling [`PublicStorage::is_recordings_dir_available`](crate::PublicStorage::is_recordings_dir_available).  
-    /// 
-    /// ex: `~/Recordings`
-    Recordings,
-}
-
-/// Directory in which to place files that are available to other applications and users.  
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
-#[non_exhaustive]
-pub enum PublicGeneralPurposeDir {
-
-    /// Standard directory in which to place documents that have been created by the user.  
-    /// 
-    Documents,
-
-    /// Standard directory in which to place files that have been downloaded by the user.  
-    /// 
-    /// ex: `~/Download`
-    Download,
-}
-
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
-pub(crate) enum PublicDir {
+pub enum PublicDir {
+    
     #[serde(untagged)]
     Image(PublicImageDir),
 
@@ -219,9 +180,110 @@ pub(crate) enum PublicDir {
     GeneralPurpose(PublicGeneralPurposeDir),
 }
 
-#[derive(Clone, Deserialize, Serialize)]
-#[serde(tag = "type", content = "path")]
-pub(crate) enum EntryPath {
-    File(FilePath),
-    Dir(DirPath),
+/// Directory in which to place images that are available to other applications and users.  
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum PublicImageDir {
+
+    /// Standard directory in which to place pictures that are available to the user.  
+    /// 
+    /// ex: `~/Pictures/{app_name}`
+    Pictures,
+
+    /// The traditional location for pictures and videos when mounting the device as a camera.  
+    /// 
+    /// ex: `~/DCIM/{app_name}`
+    DCIM,
 }
+
+/// Directory in which to place videos that are available to other applications and users.  
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum PublicVideoDir {
+
+	/// Standard directory in which to place movies that are available to the user.  
+	/// 
+	/// ex: `~/Movies/{app_name}`
+	Movies,
+
+	/// The traditional location for pictures and videos when mounting the device as a camera.  
+	/// 
+	/// ex: `~/DCIM/{app_name}`
+	DCIM,
+}
+
+/// Directory in which to place audios that are available to other applications and users.  
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum PublicAudioDir {
+
+    /// Standard directory in which to place movies that are available to the user.  
+    /// 
+    /// ex: `~/Music/{app_name}`
+    Music,
+
+    /// Standard directory in which to place any audio files that should be in the list of alarms that the user can select (not as regular music).  
+    /// 
+    /// ex: `~/Alarms/{app_name}`
+    Alarms,
+
+    /// Standard directory in which to place any audio files that should be in the list of audiobooks that the user can select (not as regular music).  
+    /// 
+    /// This is not available on Android 9 (API level 28) and lower.  
+    /// 
+    /// ex: `~/Audiobooks/{app_name}`  
+    Audiobooks,
+
+    /// Standard directory in which to place any audio files that should be in the list of notifications that the user can select (not as regular music).  
+    /// 
+    /// ex: `~/Notifications/{app_name}`
+    Notifications,
+
+    /// Standard directory in which to place any audio files that should be in the list of podcasts that the user can select (not as regular music).  
+    /// 
+    /// ex: `~/Podcasts/{app_name}`
+    Podcasts,
+
+    /// Standard directory in which to place any audio files that should be in the list of ringtones that the user can select (not as regular music).  
+    /// 
+    /// ex: `~/Ringtones/{app_name}`
+    Ringtones,
+
+    /// Standard directory in which to place any audio files that should be in the list of voice recordings recorded by voice recorder apps that the user can select (not as regular music).   
+    /// 
+    /// This is not available on Android 11 (API level 30) and lower.  
+    /// 
+    /// ex: `~/Recordings/{app_name}`
+    Recordings,
+}
+
+/// Directory in which to place files that are available to other applications and users.  
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum PublicGeneralPurposeDir {
+
+    /// Standard directory in which to place documents that have been created by the user.  
+    /// 
+    /// ex: `~/Documents/{app_name}`
+    Documents,
+
+    /// Standard directory in which to place files that have been downloaded by the user.  
+    /// 
+    /// ex: `~/Download/{app_name}`  
+    Download,
+}
+
+
+macro_rules! impl_into_pubdir {
+    ($target: ident, $wrapper: ident) => {
+        impl From<$target> for PublicDir {
+            fn from(value: $target) -> Self {
+                Self::$wrapper(value)
+            }
+        }
+    };
+}
+impl_into_pubdir!(PublicImageDir, Image);
+impl_into_pubdir!(PublicVideoDir, Video);
+impl_into_pubdir!(PublicAudioDir, Audio);
+impl_into_pubdir!(PublicGeneralPurposeDir, GeneralPurpose);
