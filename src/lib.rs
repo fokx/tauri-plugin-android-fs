@@ -197,6 +197,10 @@ pub trait AndroidFs {
     /// 
     /// For images and videos, consider using [`AndroidFs::show_open_visual_media_dialog`] instead.  
     /// 
+    /// # Issue
+    /// **Dialog has an issue. Details and resolution are following.**  
+    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// 
     /// # Note
     /// `mime_types` represents the types of files that should be selected. 
     /// However, there is no guarantee that the returned file will match the specified types.    
@@ -219,6 +223,10 @@ pub trait AndroidFs {
     /// 
     /// This is more user-friendly than [`AndroidFs::show_open_file_dialog`].  
     ///
+    /// # Issue
+    /// **Dialog has an issue. Details and resolution are following.**  
+    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// 
     /// # Note
     /// By default, returned uri is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].  
@@ -244,6 +252,10 @@ pub trait AndroidFs {
     /// allowing the app to read and write any file in the selected directory and its subdirectories.  
     /// If canceled by the user, return None.    
     /// 
+    /// # Issue
+    /// **Dialog has an issue. Details and resolution are following.**  
+    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// 
     /// # Note
     /// By default, retruned uri is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
@@ -259,6 +271,10 @@ pub trait AndroidFs {
     /// When storing media files such as images, videos, and audio, consider using [`AndroidFs::create_file_in_public_location`].  
     /// When a file does not need to be accessed by other applications and users, consider using  [`PrivateStorage::write`].  
     /// These are easier because the destination does not need to be selected in a dialog.  
+    /// 
+    /// # Issue
+    /// **Dialog has an issue. Details and resolution are following.**  
+    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
     /// 
     /// # Note
     /// `mime_type` specify the type of the target file to be saved. 

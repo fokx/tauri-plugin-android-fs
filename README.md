@@ -23,6 +23,10 @@ pub fn run() {
 There are three main ways to manipulate files:
 
 ### 1. Dialog
+
+- Currently, Dialog has an issue. Details and resolution are following.
+<https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+
 Opens the file/folder picker to read and write user-selected entries.
 
 ```rust
