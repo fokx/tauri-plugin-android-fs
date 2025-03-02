@@ -7,14 +7,12 @@ use serde::{Deserialize, Serialize};
 /// # Note
 /// For compatibility, an interconversion to [`tauri_plugin_fs::FilePath`] is implemented, such as follwing. 
 /// This may be lossy and also not guaranteed to work properly with other plugins. 
-/// But at least, it can be used with [`convertFileSrc`](https://v2.tauri.app/reference/javascript/api/namespacecore/#convertfilesrc).
 /// ```no_run
 /// use tauri_plugin_android_fs::FileUri;
 /// use tauri_plugin_fs::FilePath;
 /// 
 /// let uri: FileUri = unimplemented!();
 /// 
-/// // this can use with convertFileSrc on frontend
 /// let path: FilePath = uri.into();
 /// 
 /// let uri: FileUri = path.into();

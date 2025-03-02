@@ -56,7 +56,6 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
             //
             // If you need to use file data on frontend, 
             // consider using Tauri’s custom protocols for efficient transmission.
-            // Or, convert uri to tauri_plugin_fs::FilePath and use convertFileSrc on frontend.
             let file_path: tauri_plugin_fs::FilePath = uri.into();
         }
     }
