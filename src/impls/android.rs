@@ -66,6 +66,7 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         let mode = match mode {
             FileAccessMode::Read => "r",
             FileAccessMode::Write => "w",
+            FileAccessMode::WriteTruncate => "wt",
             FileAccessMode::WriteAppend => "wa",
             FileAccessMode::ReadWriteTruncate => "rwt",
             FileAccessMode::ReadWrite => "rw",

@@ -1,3 +1,7 @@
+# Version 4.1.0
+- Add `FileAccessMode::WriteTruncate`
+- Update documentation.
+
 # Version 4.0.0
 Overall changes.
 

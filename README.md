@@ -44,7 +44,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
         for uri in selected_files {
             let file_type = api.get_mime_type(&uri)?;
             let file_name = api.get_name(&uri)?;
-            let file: std::fs::File = api.open_file(&uri, FileAccessMode::ReadOnly)?;
+            let file: std::fs::File = api.open_file(&uri, FileAccessMode::Read)?;
             // Handle read-only file.
 
             // Alternatively, the uri can be returned to the front end, 
@@ -72,7 +72,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
         for entry in api.read_dir(&uri)? {
             match entry {
                 Entry::File { name, uri, last_modified, byte_size, mime_type, .. } => {
-                    let file: std::fs::File = api.open_file(&uri, FileAccessMode::ReadOnly)?;
+                    let file: std::fs::File = api.open_file(&uri, FileAccessMode::ReadWrite)?;
                     
                     // handle file
                 },
@@ -101,7 +101,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     )?;
 
     if let Some(uri) = selected_file {
-        let mut file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteOnly)?;
+        let mut file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
         // Handle write-only file
     } 
     else {

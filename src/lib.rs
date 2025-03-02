@@ -32,7 +32,7 @@ pub trait AndroidFs {
     /// All Android version.
     fn get_name(&self, uri: &FileUri) -> crate::Result<String>;
 
-    /// Query provider for mime type.  
+    /// Query the provider to get mime type.  
     /// If the directory, this returns `None`.  
     /// If the file, this returns no `None`.  
     /// If the file type is unknown or unset, this returns `Some("application/octet-stream")`.  
@@ -40,6 +40,18 @@ pub trait AndroidFs {
     /// # Support
     /// All Android version.
     fn get_mime_type(&self, uri: &FileUri) -> crate::Result<Option<String>>;
+
+    /// Queries the file system to get information about a file, directory.
+    /// 
+    /// # Note
+    /// This uses [`AndroidFs::open_file`] internally.
+    /// 
+    /// # Support
+    /// All Android version.
+    fn get_metadata(&self, uri: &FileUri) -> crate::Result<std::fs::Metadata> {
+        let file = self.open_file(uri, FileAccessMode::Read)?;
+        Ok(file.metadata()?)
+    }
 
     /// Open a file in the specified mode.
     /// 
@@ -95,7 +107,7 @@ pub trait AndroidFs {
     /// # Support
     /// All Android version.
     fn write(&self, uri: &FileUri, contents: impl AsRef<[u8]>) -> crate::Result<()> {
-        let mut file = self.open_file(uri, FileAccessMode::Write)?;
+        let mut file = self.open_file(uri, FileAccessMode::WriteTruncate)?;
         file.write_all(contents.as_ref())?;
         Ok(())
     }

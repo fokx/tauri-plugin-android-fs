@@ -473,7 +473,8 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
         try {
             val args = invoke.parseArgs(GetFileDescriptorArgs::class.java)
             val fd = activity.contentResolver
-                .openFileDescriptor(Uri.parse(args.uri.uri), args.mode)!!
+                .openAssetFileDescriptor(Uri.parse(args.uri.uri), args.mode)!!
+                .parcelFileDescriptor
                 .detachFd()
 
             val res = JSObject()

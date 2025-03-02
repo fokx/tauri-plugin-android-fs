@@ -6,22 +6,25 @@ use serde::{Deserialize, Serialize};
 /// 
 /// # Note
 /// For compatibility, an interconversion to [`tauri_plugin_fs::FilePath`] is implemented, such as follwing. 
-/// But this may be lossy and also not guaranteed to work properly with other plugins.  
+/// This may be lossy and also not guaranteed to work properly with other plugins. 
+/// But at least, it can be used with [`convertFileSrc`](https://v2.tauri.app/reference/javascript/api/namespacecore/#convertfilesrc).
 /// ```no_run
 /// use tauri_plugin_android_fs::FileUri;
 /// use tauri_plugin_fs::FilePath;
 /// 
 /// let uri: FileUri = unimplemented!();
 /// 
+/// // this can use with convertFileSrc on frontend
 /// let path: FilePath = uri.into();
+/// 
 /// let uri: FileUri = path.into();
 /// ```
 /// 
 /// # Typescript type
 /// You should use the following type because it might change in the future, and the inner value should not be used directly.  
 /// ```typescript
-/// type DirPath = any
-/// type DirPath = string
+/// type FileUri = any
+/// type FileUri = string
 /// ```
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -98,11 +101,18 @@ pub enum FileAccessMode {
     Read,
 
     /// Opens the file in write-only mode.
-    /// The existing content is truncated (deleted), and new data is written from the beginning.
-    /// Creates a new file if it does not exist.
+    /// **This may or may not truncate.**
+    /// So please use `WriteTruncate` or `WriteAppend` instead.
     ///
     /// FileDescriptor mode: "w"
     Write,
+
+    /// Opens the file in write-only mode.
+    /// The existing content is truncated (deleted), and new data is written from the beginning.
+    /// Creates a new file if it does not exist.
+    ///
+    /// FileDescriptor mode: "wt"
+    WriteTruncate,
 
     /// Opens the file in write-only mode.
     /// The existing content is preserved, and new data is appended to the end of the file.
