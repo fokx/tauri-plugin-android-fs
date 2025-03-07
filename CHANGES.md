@@ -1,3 +1,10 @@
+# Version 4.2.0
+- Update documentation.
+- Add feature `avoid-issue1`
+- Add permission `allow-noop`
+- Deprecate `PathError`
+- Deprecate `Error::Path`
+
 # Version 4.1.2
 - Update documentation.
 

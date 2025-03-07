@@ -1,0 +1,6 @@
+"$schema" = "schemas/schema.json"
+
+[[permission]]
+identifier = "allow-noop"
+description = "Enables the noop command."
+commands.allow = ["noop"]

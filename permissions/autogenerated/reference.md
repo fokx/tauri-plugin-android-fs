@@ -2,6 +2,7 @@
 
 Default permissions for the plugin
 
+- `allow-noop`
 
 ## Permission Table
 
@@ -15,25 +16,12 @@ Default permissions for the plugin
 <tr>
 <td>
 
-`android-fs:allow-ping`
+`android-fs:allow-noop`
 
 </td>
 <td>
 
-Enables the ping command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`android-fs:deny-ping`
-
-</td>
-<td>
-
-Denies the ping command without any pre-configured scope.
+Enables the noop command.
 
 </td>
 </tr>

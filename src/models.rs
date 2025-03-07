@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 /// 
 /// # Note
 /// For compatibility, an interconversion to [`tauri_plugin_fs::FilePath`] is implemented, such as follwing. 
-/// This may be lossy and also not guaranteed to work properly with other plugins. 
+/// This may be lossy and also not guaranteed to work properly with other plugins.
+/// However, reading and writing files by [`tauri_plugin_fs`] etc. should work well.  
 /// ```no_run
 /// use tauri_plugin_android_fs::FileUri;
 /// use tauri_plugin_fs::FilePath;

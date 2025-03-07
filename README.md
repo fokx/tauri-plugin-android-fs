@@ -5,7 +5,7 @@ This plugin was created to provide explicit and consistent file operations.
 No special permission or configuration is required.  
 
 # Setup
-All you need to do is register this plugin with your Tauri project: 
+Register this plugin with your Tauri project: 
 
 `src-tauri/src/lib.rs`
 
@@ -19,13 +19,29 @@ pub fn run() {
 }
 ```
 
+The current dialog in this plugin has an [issue](https://github.com/aiueo13/tauri-plugin-android-fs/issues/1). To avoid this, please follow these two steps:
+
+`src-tauri/Cargo.toml`
+```toml
+[dependencies]
+tauri-plugin-android-fs = { features = ["avoid-issue1"], .. }
+```
+
+`src-tauri/capabilities/default.json`
+```json
+{
+  ..
+  "permissions": [
+    "android-fs:default",
+    ..
+  ]
+}
+```
+
 # Usage
 There are three main ways to manipulate files:
 
 ### 1. Dialog
-
-- Currently, Dialog has an issue. Details and resolution are following.
-<https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
 
 Opens the file/folder picker to read and write user-selected entries.
 
@@ -56,6 +72,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
             //
             // If you need to use file data on frontend, 
             // consider using Tauri’s custom protocols for efficient transmission.
+            // Or convert to FilePath and use tauri_plugin_fs functions such as 'read' on frontend.
             let file_path: tauri_plugin_fs::FilePath = uri.into();
         }
     }

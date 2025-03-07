@@ -7,6 +7,7 @@ mod error;
 use std::io::{Read, Write};
 
 pub use models::*;
+#[allow(deprecated)]
 pub use error::{Error, Result, PathError};
 pub use impls::{AndroidFsExt, init};
 
@@ -121,7 +122,7 @@ pub trait AndroidFs {
     /// All Android version.
     fn remove_file(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Remove the **empty** file.
+    /// Remove the **empty** directory.
     /// 
     /// # Note
     /// This is only for **removeable** uri.
@@ -199,7 +200,8 @@ pub trait AndroidFs {
     /// 
     /// # Issue
     /// **Dialog has an issue. Details and resolution are following.**  
-    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
     /// 
     /// # Note
     /// `mime_types` represents the types of files that should be selected. 
@@ -225,7 +227,8 @@ pub trait AndroidFs {
     ///
     /// # Issue
     /// **Dialog has an issue. Details and resolution are following.**  
-    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
     /// 
     /// # Note
     /// By default, returned uri is valid until the app is terminated. 
@@ -254,7 +257,8 @@ pub trait AndroidFs {
     /// 
     /// # Issue
     /// **Dialog has an issue. Details and resolution are following.**  
-    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
     /// 
     /// # Note
     /// By default, retruned uri is valid until the app is terminated. 
@@ -274,7 +278,8 @@ pub trait AndroidFs {
     /// 
     /// # Issue
     /// **Dialog has an issue. Details and resolution are following.**  
-    /// <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
     /// 
     /// # Note
     /// `mime_type` specify the type of the target file to be saved. 

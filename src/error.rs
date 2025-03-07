@@ -5,6 +5,7 @@ pub type Result<T> = std::result::Result<T, crate::Error>;
 /// Path error
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, thiserror::Error)]
 #[non_exhaustive]
+#[deprecated(note = "Unused error in this plugin")]
 pub enum PathError {
 
     /// When the path contains consecutive separators.
@@ -32,6 +33,8 @@ pub enum Error {
     NotAndroid,
 
     #[error(transparent)]
+    #[deprecated(note = "Unused error in this plugin")]
+    #[allow(deprecated)]
     Path(#[from] PathError),
 
     #[error(transparent)]
