@@ -63,10 +63,11 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     }
     else {
         for uri in selected_files {
-            let file_type = api.get_mime_type(&uri)?;
+            let file_type = api.get_mime_type(&uri)?.unwrap(); // this returns None only for folders.
             let file_name = api.get_name(&uri)?;
-            let file: std::fs::File = api.open_file(&uri, FileAccessMode::Read)?;
+
             // Handle read-only file.
+            let file: std::fs::File = api.open_file(&uri, FileAccessMode::Read)?;
 
             // Alternatively, the uri can be returned to the front end, 
             // and file processing can be handled within another tauri::command function that takes it as an argument.
@@ -90,12 +91,14 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let selected_folder = api.show_open_dir_dialog()?;
 
     if let Some(dir_uri) = selected_folder {
+
         // create a new empty file in the selected folder
         let new_file_uri = api.create_file(
             &dir_uri, // Parent folder
             "MyFolder/file.txt", // Relative path
             Some("text/plain") // Mime type
         )?;
+
         // write contents
         if let Err(e) = api.write(&new_file_uri, "contents") {
             // handle err
@@ -108,9 +111,8 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
         for entry in api.read_dir(&dir_uri)? {
             match entry {
                 Entry::File { name, uri, last_modified, byte_size, mime_type, .. } => {
-                    let file: std::fs::File = api.open_file(&uri, FileAccessMode::ReadWrite)?;
-                    
                     // handle file
+                    let file: std::fs::File = api.open_file(&uri, FileAccessMode::ReadWrite)?;
                 },
                 Entry::Dir { name, uri, last_modified, .. } => {
                     // handle folder
@@ -138,10 +140,9 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     )?;
 
     if let Some(uri) = selected_file {
-        let mut file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
-
         // Handle write-only file
-        //
+        let mut file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
+        
         // If you need to write file from frontend, 
         // convert to FilePath and use tauri_plugin_fs functions such as 'write' on frontend.
         let file_path: tauri_plugin_fs::FilePath = uri.into();
@@ -175,12 +176,14 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
          "my-image.png", // Relative file path
          Some("image/png") // Mime type
     )?;
+
     // write the contents to the PNG image
     if let Err(e) = api.write(&uri, &contents) {
         // handle err
         api.remove_file(&uri)?;
         return Err(e)
     }
+
 
     // create a new empty text file
     //
@@ -193,6 +196,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
          "2025-3-2/data.txt", // Relative file path
          Some("text/plain") // Mime type
     )?;
+
     // write the contents to the text file
     if let Err(e) = api.write(&uri, &contents) {
         // handle err
