@@ -131,7 +131,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// All Android version.
     fn remove_dir(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Creates a new file at the specified directory, and returns **read-write-removeable** uri.    
+    /// Creates a new empty file at the specified directory, and returns **read-write-removeable** uri.    
     /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
     /// 
     /// If you want to create a new file without a `FileUri`, use [`AndroidFs::create_file_in_public_location`].
@@ -325,12 +325,17 @@ pub trait AndroidFs<R: tauri::Runtime> {
 /// File storage intended for the app’s use only.  
 pub trait PublicStorage<R: tauri::Runtime> {
 
-    /// Creates a new file at the specified public app directory, and returns **read-write-removeable** uri.    
+    /// Creates a new empty file at the specified public app directory, and returns **read-write-removeable** uri.    
     /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
     /// 
     /// # Note
     /// `mime_type`  specify the type of the file to be created. 
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// When using [`PublicImageDir`], please do not use a `mime_type` other than image types.
+    /// This may result in an error.
+    /// Similarly, do not use non-corresponding media types for [`PublicVideoDir`] or [`PublicAudioDir`]. 
+    /// Only [`PublicGeneralPurposeDir`] allows all mime types.
     /// 
     /// # Support
     /// Android 10 (API level 29) or higher.  
@@ -356,7 +361,7 @@ pub trait PublicStorage<R: tauri::Runtime> {
         self.create_file_in_public_dir(dir, relative_path_with_subdir, mime_type)
     }
 
-    /// Creates a new file at the specified public directory, and returns **read-write-removeable** uri.    
+    /// Creates a new empty file at the specified public directory, and returns **read-write-removeable** uri.    
     /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
     /// 
     /// # Note
@@ -364,6 +369,11 @@ pub trait PublicStorage<R: tauri::Runtime> {
     /// 
     /// `mime_type`  specify the type of the file to be created. 
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// When using [`PublicImageDir`], please do not use a `mime_type` other than image types.
+    /// This may result in an error.
+    /// Similarly, do not use non-corresponding media types for [`PublicVideoDir`] or [`PublicAudioDir`]. 
+    /// Only [`PublicGeneralPurposeDir`] allows all mime types.
     /// 
     /// # Support
     /// Android 10 (API level 29) or higher.  
@@ -524,6 +534,23 @@ pub trait PrivateStorage<R: tauri::Runtime> {
 
         let path = self.resolve_path_with(base_dir, relative_path)?;
         Ok(std::fs::File::create(path)?)
+    }
+
+    /// Creates a new file in read-write mode; error if the file exists. 
+    /// 
+    /// This internally uses [`PrivateStorage::resolve_path`] and [`std::fs::File::create_new`].  
+    /// See [`PrivateStorage::resolve_path`] for details.  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn create_new_file(
+        &self,
+        base_dir: PrivateDir, 
+        relative_path: impl AsRef<str>, 
+    ) -> crate::Result<std::fs::File> {
+
+        let path = self.resolve_path_with(base_dir, relative_path)?;
+        Ok(std::fs::File::create_new(path)?)
     }
 
     /// Reads the entire contents of a file into a bytes vector.  

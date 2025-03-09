@@ -1,3 +1,7 @@
+# Version 4.4.0
+- Update documentation.
+- Add `PrivateStorage::create_new_file`
+
 # Version 4.3.0
 - Update documentation.
 - Add `PublicStorage`
