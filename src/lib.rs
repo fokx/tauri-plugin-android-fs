@@ -12,7 +12,7 @@ pub use error::{Error, Result, PathError};
 pub use impls::{AndroidFsExt, init};
 
 /// API
-pub trait AndroidFs {
+pub trait AndroidFs<R: tauri::Runtime> {
 
     /// Verify whether this plugin is available.  
     /// 
@@ -149,21 +149,18 @@ pub trait AndroidFs {
         mime_type: Option<&str>
     ) -> crate::Result<FileUri>;
 
-    /// Creates a new file at the specified public location, and returns **read-write-removeable** uri.    
-    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
-    /// 
-    /// # Note
-    /// `mime_type`  specify the type of the file to be created. 
-    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
-    /// 
-    /// # Support
-    /// All Android version.
+    /// Please use [`PublicStorage::create_file_in_public_app_dir`] insted.
+    #[deprecated = "Please use PublicStorage::create_file_in_public_app_dir insted."]
+    #[warn(deprecated)]
     fn create_file_in_public_location(
         &self,
         dir: impl Into<PublicDir>,
         relative_path: impl AsRef<str>, 
         mime_type: Option<&str>
-    ) -> crate::Result<FileUri>;
+    ) -> crate::Result<FileUri> {
+
+        self.public_storage().create_file_in_public_app_dir(dir, relative_path, mime_type)
+    }
 
     /// Returns the unordered child entries of the specified directory.  
     /// Returned [`Entry`](crate::Entry) contains file or directory uri.
@@ -302,24 +299,105 @@ pub trait AndroidFs {
     /// All Android version.
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool>;
 
+    /// Please use [`PublicStorage::is_audiobooks_dir_available`] insted.
+    #[deprecated(note = "Please use PublicStorage::is_audiobooks_dir_available insted.")]
+    #[warn(deprecated)]
+    fn is_public_audiobooks_dir_available(&self) -> crate::Result<bool> {
+        self.public_storage().is_audiobooks_dir_available()
+    }
+
+    /// Please use [`PublicStorage::is_recordings_dir_available`] insted.
+    #[deprecated(note = "Please use PublicStorage::is_recordings_dir_available insted.")]
+    #[warn(deprecated)]
+    fn is_public_recordings_dir_available(&self) -> crate::Result<bool> {
+        self.public_storage().is_recordings_dir_available()
+    }
+
+    fn app_handle(&self) -> &tauri::AppHandle<R>;
+
+    /// File storage API intended for the app’s use only.
+    fn private_storage(&self) -> &impl PrivateStorage<R>;
+
+    /// File storage that is available to other applications and users.
+    fn public_storage(&self) -> &impl PublicStorage<R>;
+}
+
+/// File storage intended for the app’s use only.  
+pub trait PublicStorage<R: tauri::Runtime> {
+
+    /// Creates a new file at the specified public app directory, and returns **read-write-removeable** uri.    
+    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
+    /// 
+    /// # Note
+    /// `mime_type`  specify the type of the file to be created. 
+    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// # Support
+    /// Android 10 (API level 29) or higher.  
+    /// Lower are need runtime request of `WRITE_EXTERNAL_STORAGE`. (This option will be made available in the future)
+    /// 
+    /// [`PublicAudioDir::Audiobooks`] is not available on Android 9 (API level 28) and lower.
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_audiobooks_dir_available`].  
+    /// [`PublicAudioDir::Recordings`] is not available on Android 11 (API level 30) and lower.
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_recordings_dir_available`].  
+    /// Others are available in all Android versions.
+    fn create_file_in_public_app_dir(
+        &self,
+        dir: impl Into<PublicDir>,
+        relative_path: impl AsRef<str>, 
+        mime_type: Option<&str>
+    ) -> crate::Result<FileUri> {
+
+        let app = self.app_handle().config();
+        let app_name = app.product_name.as_ref().unwrap_or(&app.identifier).replace('/', " ");
+        let relative_path = relative_path.as_ref().trim_start_matches('/');
+        let relative_path_with_subdir = format!("{app_name}/{relative_path}");
+
+        self.create_file_in_public_dir(dir, relative_path_with_subdir, mime_type)
+    }
+
+    /// Creates a new file at the specified public directory, and returns **read-write-removeable** uri.    
+    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
+    /// 
+    /// # Note
+    /// Do not save files directly in the public directory. Please specify a subdirectory in the `relative_path_with_sub_dir`, such as `appName/file.txt` or `appName/2025-2-11/file.txt`. Do not use `file.txt`.
+    /// 
+    /// `mime_type`  specify the type of the file to be created. 
+    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
+    /// 
+    /// # Support
+    /// Android 10 (API level 29) or higher.  
+    /// Lower are need runtime request of `WRITE_EXTERNAL_STORAGE`. (This option will be made available in the future)
+    ///
+    /// [`PublicAudioDir::Audiobooks`] is not available on Android 9 (API level 28) and lower.
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_audiobooks_dir_available`].  
+    /// [`PublicAudioDir::Recordings`] is not available on Android 11 (API level 30) and lower.
+    /// Availability on a given device can be verified by calling [`PublicStorage::is_recordings_dir_available`].  
+    /// Others are available in all Android versions.
+    fn create_file_in_public_dir(
+        &self,
+        dir: impl Into<PublicDir>,
+        relative_path_with_subdir: impl AsRef<str>, 
+        mime_type: Option<&str>
+    ) -> crate::Result<FileUri>;
+
     /// Verify whether [`PublicAudioDir::Audiobooks`] is available on a given device.
     /// 
     /// # Support
     /// All Android version.
-    fn is_public_audiobooks_dir_available(&self) -> crate::Result<bool>;
+    fn is_audiobooks_dir_available(&self) -> crate::Result<bool>;
 
     /// Verify whether [`PublicAudioDir::Recordings`] is available on a given device.
     /// 
     /// # Support
     /// All Android version.
-    fn is_public_recordings_dir_available(&self) -> crate::Result<bool>;
+    fn is_recordings_dir_available(&self) -> crate::Result<bool>;
 
-    /// File storage API intended for the app’s use only.
-    fn private_storage(&self) -> &impl PrivateStorage;
+    fn app_handle(&self) -> &tauri::AppHandle<R>;
 }
 
 /// File storage intended for the app’s use only.  
-pub trait PrivateStorage {
+pub trait PrivateStorage<R: tauri::Runtime> {
 
     /// Get the absolute path of the specified directory.  
     /// Apps require no permissions to read or write to the returned path, since this path lives in their private storage.  
@@ -606,4 +684,6 @@ pub trait PrivateStorage {
 
         Ok(std::fs::metadata(path)?)
     }
+
+    fn app_handle(&self) -> &tauri::AppHandle<R>;
 }

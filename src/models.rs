@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 /// Path to represent a file or directory.
 /// 
 /// # Note
-/// For compatibility, an interconversion to [`tauri_plugin_fs::FilePath`] is implemented, such as follwing. 
-/// This may be lossy and also not guaranteed to work properly with other plugins.
-/// However, reading and writing files by [`tauri_plugin_fs`] etc. should work well.  
+/// For compatibility, an interconversion to [`tauri_plugin_fs::FilePath`] is implemented, such as follwing.  
+/// This is lossy and also not guaranteed to work properly with other plugins.  
+/// However, if a file uri, reading and writing files by [`tauri_plugin_fs`] etc. should work well.  
 /// ```no_run
 /// use tauri_plugin_android_fs::FileUri;
 /// use tauri_plugin_fs::FilePath;
@@ -196,12 +196,12 @@ pub enum PublicImageDir {
 
     /// Standard directory in which to place pictures that are available to the user.  
     /// 
-    /// ex: `~/Pictures/{app_name}`
+    /// ex: `~/Pictures`
     Pictures,
 
     /// The traditional location for pictures and videos when mounting the device as a camera.  
     /// 
-    /// ex: `~/DCIM/{app_name}`
+    /// ex: `~/DCIM`
     DCIM,
 }
 
@@ -212,12 +212,12 @@ pub enum PublicVideoDir {
 
 	/// Standard directory in which to place movies that are available to the user.  
 	/// 
-	/// ex: `~/Movies/{app_name}`
+	/// ex: `~/Movies`
 	Movies,
 
 	/// The traditional location for pictures and videos when mounting the device as a camera.  
 	/// 
-	/// ex: `~/DCIM/{app_name}`
+	/// ex: `~/DCIM`
 	DCIM,
 }
 
@@ -228,41 +228,41 @@ pub enum PublicAudioDir {
 
     /// Standard directory in which to place movies that are available to the user.  
     /// 
-    /// ex: `~/Music/{app_name}`
+    /// ex: `~/Music`
     Music,
 
     /// Standard directory in which to place any audio files that should be in the list of alarms that the user can select (not as regular music).  
     /// 
-    /// ex: `~/Alarms/{app_name}`
+    /// ex: `~/Alarms`
     Alarms,
 
     /// Standard directory in which to place any audio files that should be in the list of audiobooks that the user can select (not as regular music).  
     /// 
     /// This is not available on Android 9 (API level 28) and lower.  
     /// 
-    /// ex: `~/Audiobooks/{app_name}`  
+    /// ex: `~/Audiobooks`  
     Audiobooks,
 
     /// Standard directory in which to place any audio files that should be in the list of notifications that the user can select (not as regular music).  
     /// 
-    /// ex: `~/Notifications/{app_name}`
+    /// ex: `~/Notifications`
     Notifications,
 
     /// Standard directory in which to place any audio files that should be in the list of podcasts that the user can select (not as regular music).  
     /// 
-    /// ex: `~/Podcasts/{app_name}`
+    /// ex: `~/Podcasts`
     Podcasts,
 
     /// Standard directory in which to place any audio files that should be in the list of ringtones that the user can select (not as regular music).  
     /// 
-    /// ex: `~/Ringtones/{app_name}`
+    /// ex: `~/Ringtones`
     Ringtones,
 
     /// Standard directory in which to place any audio files that should be in the list of voice recordings recorded by voice recorder apps that the user can select (not as regular music).   
     /// 
     /// This is not available on Android 11 (API level 30) and lower.  
     /// 
-    /// ex: `~/Recordings/{app_name}`
+    /// ex: `~/Recordings`
     Recordings,
 }
 
@@ -273,12 +273,12 @@ pub enum PublicGeneralPurposeDir {
 
     /// Standard directory in which to place documents that have been created by the user.  
     /// 
-    /// ex: `~/Documents/{app_name}`
+    /// ex: `~/Documents`
     Documents,
 
     /// Standard directory in which to place files that have been downloaded by the user.  
     /// 
-    /// ex: `~/Download/{app_name}`  
+    /// ex: `~/Download`  
     Download,
 }
 

@@ -1,3 +1,11 @@
+# Version 4.3.0
+- Update documentation.
+- Add `PublicStorage`
+- Add `AndroidFs::public_storage`
+- Deprecate `AndroidFs::create_file_in_public_location`
+- Deprecate `AndroidFs::is_public_audiobooks_dir_available`
+- Deprecate `AndroidFs::is_public_recordings_dir_available`
+
 # Version 4.2.0
 - Update documentation.
 - Add feature `avoid-issue1`

@@ -47,12 +47,12 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
 
 pub trait AndroidFsExt<R: Runtime> {
 
-    fn android_fs(&self) -> &impl AndroidFs;
+    fn android_fs(&self) -> &impl AndroidFs<R>;
 }
 
 impl<R: Runtime, T: Manager<R>> AndroidFsExt<R> for T {
 
-    fn android_fs(&self) -> &impl AndroidFs {
+    fn android_fs(&self) -> &impl AndroidFs<R> {
         self.state::<AndroidFsImpl<R>>().inner()
     }
 }

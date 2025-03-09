@@ -1,7 +1,7 @@
 use std::fs::File;
 use serde::de::DeserializeOwned;
 use tauri::{plugin::PluginApi, AppHandle, Runtime};
-use crate::{models::*, AndroidFs, PrivateStorage};
+use crate::{models::*, AndroidFs, PrivateStorage, PublicStorage};
 
 
 /// Access to the android-fs APIs.
@@ -12,13 +12,13 @@ impl<R: Runtime> AndroidFsImpl<R> {
     pub fn new<C: DeserializeOwned>(
         app: &AppHandle<R>,
         _api: PluginApi<R, C>,
-    ) -> crate::Result<impl AndroidFs> {
+    ) -> crate::Result<impl AndroidFs<R>> {
 		
         Ok(Self(app.clone()))
     }
 }
 
-impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
+impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
     fn get_name(&self, _path: &FileUri) -> crate::Result<String> {
         Err(crate::Error::NotAndroid)
@@ -63,7 +63,11 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn private_storage(&self) -> &impl crate::PrivateStorage {
+    fn private_storage(&self) -> &impl crate::PrivateStorage<R> {
+        self
+    }
+
+    fn public_storage(&self) -> &impl PublicStorage<R> {
         self
     }
     
@@ -106,19 +110,44 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
     fn show_open_dir_dialog(&self) -> crate::Result<Option<FileUri>> {
         Err(crate::Error::NotAndroid)
     }
-    
-    fn is_public_audiobooks_dir_available(&self) -> crate::Result<bool> {
-        Err(crate::Error::NotAndroid)
-    }
-    
-    fn is_public_recordings_dir_available(&self) -> crate::Result<bool> {
-        Err(crate::Error::NotAndroid)
+
+    fn app_handle(&self) -> &tauri::AppHandle<R> {
+        &self.0
     }
 }
 
-impl<R: Runtime> PrivateStorage for AndroidFsImpl<R> {
+impl<R: Runtime> PublicStorage<R> for AndroidFsImpl<R> {
+
+    fn create_file_in_public_dir(
+        &self,
+        _dir: impl Into<PublicDir>,
+        _relative_path_with_subdir: impl AsRef<str>, 
+        _mime_type: Option<&str>
+    ) -> crate::Result<FileUri> {
+
+        todo!()
+    }
+
+    fn is_audiobooks_dir_available(&self) -> crate::Result<bool> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn is_recordings_dir_available(&self) -> crate::Result<bool> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn app_handle(&self) -> &tauri::AppHandle<R> {
+        &self.0
+    }
+}
+
+impl<R: Runtime> PrivateStorage<R> for AndroidFsImpl<R> {
 
     fn resolve_path(&self, _dir: PrivateDir) -> crate::Result<std::path::PathBuf> {
         Err(crate::Error::NotAndroid)
+    }
+
+    fn app_handle(&self) -> &tauri::AppHandle<R> {
+        &self.0
     }
 }

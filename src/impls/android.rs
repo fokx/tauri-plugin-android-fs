@@ -1,7 +1,7 @@
 use serde::{de::DeserializeOwned, Serialize, Deserialize};
 use std::time::{UNIX_EPOCH, Duration};
 use tauri::{plugin::{PluginApi, PluginHandle}, AppHandle, Runtime};
-use crate::{models::*, AndroidFs, PrivateStorage};
+use crate::{models::*, AndroidFs, AndroidFsExt, PrivateStorage, PublicStorage};
 
 
 pub struct AndroidFsImpl<R: Runtime>(PluginHandle<R>, AppHandle<R>);
@@ -11,7 +11,7 @@ impl<R: Runtime> AndroidFsImpl<R> {
     pub fn new<C: DeserializeOwned>(
         app: &AppHandle<R>,
         api: PluginApi<R, C>,
-    ) -> crate::Result<impl AndroidFs> {
+    ) -> crate::Result<impl AndroidFs<R>> {
 
         Ok(Self(api.register_android_plugin("com.plugin.android_fs", "AndroidFsPlugin")?, app.clone()))
     }
@@ -32,7 +32,7 @@ macro_rules! impl_serde {
     };
 }
 
-impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
+impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
     fn get_name(&self, uri: &FileUri) -> crate::Result<String> {
         impl_serde!(struct Req { uri: FileUri });
@@ -174,41 +174,6 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
     
-    fn create_file_in_public_location(
-        &self,
-        dir: impl Into<PublicDir>,
-        relative_path: impl AsRef<str>, 
-        mime_type: Option<&str>
-    ) -> crate::Result<FileUri> {
-
-        impl_serde!(struct Req<'a> { dir: PublicDir, dir_type: &'a str });
-        impl_serde!(struct Res { name: String, uri: String });
-
-        let dir = dir.into();
-        let (_, dir_type) = match dir {
-            PublicDir::Image(_) => (mime_type.unwrap_or("image/*"), "Image"),
-            PublicDir::Video(_) => (mime_type.unwrap_or("video/*"), "Video"),
-            PublicDir::Audio(_) => (mime_type.unwrap_or("audio/*"), "Audio"),
-            PublicDir::GeneralPurpose(_) => (mime_type.unwrap_or("application/octet-stream"), "GeneralPurpose"),
-        };
-
-        let (dir_name, dir_parent_uri) = self.0  
-            .run_mobile_plugin::<Res>("getPublicDirInfo", Req { dir, dir_type })
-            .map(|v| (v.name, v.uri))?;
-        
-        let app = self.1.config();
-        let app_name = app.product_name.as_ref().unwrap_or(&app.identifier);
-        let relative_path = relative_path.as_ref().trim_start_matches('/');
-        let relative_path = format!("{dir_name}/{app_name}/{relative_path}");
-
-        let dir_parent_uri = FileUri {
-            uri: dir_parent_uri,
-            document_top_tree_uri: None
-        };
-
-        AndroidFs::create_file(self, &dir_parent_uri, relative_path, mime_type)
-    }
-    
     fn read_dir(&self, uri: &FileUri) -> crate::Result<impl Iterator<Item = Entry>> {
         impl_serde!(struct Req { uri: FileUri });
         impl_serde!(struct Obj { name: String, uri: FileUri, last_modified: i64, byte_size: i64, mime_type: Option<String> });
@@ -250,24 +215,6 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map(|_| ())
             .map_err(Into::into)
     }
-    
-    fn is_public_audiobooks_dir_available(&self) -> crate::Result<bool> {
-        impl_serde!(struct Res { value: bool });
-
-        self.0  
-            .run_mobile_plugin::<Res>("isAudiobooksDirAvailable", "")
-            .map(|v| v.value)
-            .map_err(Into::into)
-    }
-
-    fn is_public_recordings_dir_available(&self) -> crate::Result<bool> {
-        impl_serde!(struct Res { value: bool });
-
-        self.0  
-            .run_mobile_plugin::<Res>("isRecordingsDirAvailable", "")
-            .map(|v| v.value)
-            .map_err(Into::into)
-	}
 
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {
         impl_serde!(struct Res { value: bool });
@@ -278,12 +225,80 @@ impl<R: Runtime> AndroidFs for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
-    fn private_storage(&self) -> &impl PrivateStorage {
+    fn private_storage(&self) -> &impl PrivateStorage<R> {
         self
+    }
+
+    fn public_storage(&self) -> &impl PublicStorage<R> {
+        self
+    }
+
+    fn app_handle(&self) -> &tauri::AppHandle<R> {
+        &self.1
     }
 }
 
-impl<R: Runtime> PrivateStorage for AndroidFsImpl<R> {
+impl<R: Runtime> PublicStorage<R> for AndroidFsImpl<R> {
+
+    fn create_file_in_public_dir(
+        &self,
+        dir: impl Into<PublicDir>,
+        relative_path: impl AsRef<str>, 
+        mime_type: Option<&str>
+    ) -> crate::Result<FileUri> {
+
+        impl_serde!(struct Req<'a> { dir: PublicDir, dir_type: &'a str });
+        impl_serde!(struct Res { name: String, uri: String });
+
+        let dir = dir.into();
+        let (_, dir_type) = match dir {
+            PublicDir::Image(_) => (mime_type.unwrap_or("image/*"), "Image"),
+            PublicDir::Video(_) => (mime_type.unwrap_or("video/*"), "Video"),
+            PublicDir::Audio(_) => (mime_type.unwrap_or("audio/*"), "Audio"),
+            PublicDir::GeneralPurpose(_) => (mime_type.unwrap_or("application/octet-stream"), "GeneralPurpose"),
+        };
+
+        let (dir_name, dir_parent_uri) = self.0  
+            .run_mobile_plugin::<Res>("getPublicDirInfo", Req { dir, dir_type })
+            .map(|v| (v.name, v.uri))?;
+        
+        let relative_path = relative_path.as_ref().trim_start_matches('/');
+        let relative_path = format!("{dir_name}/{relative_path}");
+
+        let dir_parent_uri = FileUri {
+            uri: dir_parent_uri,
+            document_top_tree_uri: None
+        };
+
+        PublicStorage::app_handle(self)
+            .android_fs()
+            .create_file(&dir_parent_uri, relative_path, mime_type)
+    }
+
+    fn is_audiobooks_dir_available(&self) -> crate::Result<bool> {
+        impl_serde!(struct Res { value: bool });
+
+        self.0  
+            .run_mobile_plugin::<Res>("isAudiobooksDirAvailable", "")
+            .map(|v| v.value)
+            .map_err(Into::into)
+    }
+
+    fn is_recordings_dir_available(&self) -> crate::Result<bool> {
+        impl_serde!(struct Res { value: bool });
+
+        self.0  
+            .run_mobile_plugin::<Res>("isRecordingsDirAvailable", "")
+            .map(|v| v.value)
+            .map_err(Into::into)
+	}
+
+    fn app_handle(&self) -> &tauri::AppHandle<R> {
+        &self.1
+    }
+}
+
+impl<R: Runtime> PrivateStorage<R> for AndroidFsImpl<R> {
 
     fn resolve_path(&self, dir: PrivateDir) -> crate::Result<std::path::PathBuf> {
         impl_serde!(struct Paths { data: String, cache: String });
@@ -303,5 +318,9 @@ impl<R: Runtime> PrivateStorage for AndroidFsImpl<R> {
             PrivateDir::Data => std::path::PathBuf::from(paths.data.to_owned()),
             PrivateDir::Cache => std::path::PathBuf::from(paths.cache.to_owned()),
         })
+    }
+
+    fn app_handle(&self) -> &tauri::AppHandle<R> {
+        &self.1
     }
 }
