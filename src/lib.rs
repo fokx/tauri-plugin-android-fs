@@ -134,8 +134,6 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Creates a new empty file at the specified directory, and returns **read-write-removeable** uri.    
     /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
     /// 
-    /// If you want to create a new file without a `FileUri`, use [`AndroidFs::create_file_in_public_location`].
-    /// 
     /// # Note
     /// `mime_type`  specify the type of the file to be created. 
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
@@ -282,6 +280,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// `mime_type` specify the type of the target file to be saved. 
     /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
     /// 
+    /// The file created this way will not be registered in the MediaStore that is used by [`AndroidFs::show_open_visual_media_dialog`] and etc.
+    /// Images and videos files can be registered in the gallery by using methods like [`PublicStorage::create_file_in_public_app_dir`] to create them.
+    /// 
     /// By default, returned uri is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     /// 
@@ -325,13 +326,18 @@ pub trait AndroidFs<R: tauri::Runtime> {
 /// File storage intended for the app’s use only.  
 pub trait PublicStorage<R: tauri::Runtime> {
 
-    /// Creates a new empty file at the specified public app directory, and returns **read-write-removeable** uri.    
-    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
+    /// Creates a new empty file in the specified public app directory and returns a **read-write-removable** URI.  
+    ///  
+    /// If a file with the same name already exists, a sequential number is added to the name.  
+    /// Missing subdirectories will be created recursively.  
+    ///  
+    /// The created file will be registered with the corresponding MediaStore as needed.  
+    /// The URI will remain valid only until the app is uninstalled.
     /// 
     /// # Note
     /// `mime_type`  specify the type of the file to be created. 
-    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
-    /// 
+    /// It should be provided whenever possible. 
+    /// If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types. 
     /// When using [`PublicImageDir`], please do not use a `mime_type` other than image types.
     /// This may result in an error.
     /// Similarly, do not use non-corresponding media types for [`PublicVideoDir`] or [`PublicAudioDir`]. 
@@ -340,7 +346,7 @@ pub trait PublicStorage<R: tauri::Runtime> {
     /// # Support
     /// Android 10 (API level 29) or higher.  
     /// Lower are need runtime request of `WRITE_EXTERNAL_STORAGE`. (This option will be made available in the future)
-    /// 
+    ///
     /// [`PublicAudioDir::Audiobooks`] is not available on Android 9 (API level 28) and lower.
     /// Availability on a given device can be verified by calling [`PublicStorage::is_audiobooks_dir_available`].  
     /// [`PublicAudioDir::Recordings`] is not available on Android 11 (API level 30) and lower.
@@ -353,23 +359,28 @@ pub trait PublicStorage<R: tauri::Runtime> {
         mime_type: Option<&str>
     ) -> crate::Result<FileUri> {
 
-        let app = self.app_handle().config();
-        let app_name = app.product_name.as_ref().unwrap_or(&app.identifier).replace('/', " ");
+        let config = self.app_handle().config();
+        let app_name = config.product_name.as_ref().unwrap_or(&config.identifier).replace('/', " ");
         let relative_path = relative_path.as_ref().trim_start_matches('/');
         let relative_path_with_subdir = format!("{app_name}/{relative_path}");
 
         self.create_file_in_public_dir(dir, relative_path_with_subdir, mime_type)
     }
 
-    /// Creates a new empty file at the specified public directory, and returns **read-write-removeable** uri.    
-    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
+    /// Creates a new empty file in the specified public directory and returns a **read-write-removable** URI.  
+    ///  
+    /// If a file with the same name already exists, a sequential number is added to the name.  
+    /// Missing subdirectories will be created recursively.  
+    ///  
+    /// The created file will be registered with the corresponding MediaStore as needed.  
+    /// The uri will remain valid only until the app is uninstalled.
     /// 
     /// # Note
     /// Do not save files directly in the public directory. Please specify a subdirectory in the `relative_path_with_sub_dir`, such as `appName/file.txt` or `appName/2025-2-11/file.txt`. Do not use `file.txt`.
     /// 
     /// `mime_type`  specify the type of the file to be created. 
-    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
-    /// 
+    /// It should be provided whenever possible. 
+    /// If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types. 
     /// When using [`PublicImageDir`], please do not use a `mime_type` other than image types.
     /// This may result in an error.
     /// Similarly, do not use non-corresponding media types for [`PublicVideoDir`] or [`PublicAudioDir`]. 

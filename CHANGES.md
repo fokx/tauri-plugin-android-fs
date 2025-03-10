@@ -1,3 +1,6 @@
+# Version 4.4.2
+- Update documentation.
+
 # Version 4.4.1
 - Update documentation.
 

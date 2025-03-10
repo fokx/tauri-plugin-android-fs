@@ -63,7 +63,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     }
     else {
         for uri in selected_files {
-            let file_type = api.get_mime_type(&uri)?.unwrap(); // this returns None only for folders.
+            let file_type = api.get_mime_type(&uri)?.unwrap(); // If file, this returns no None.
             let file_name = api.get_name(&uri)?;
 
             // Handle read-only file.
@@ -156,6 +156,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
 
 ### 2. Public Storage
 File storage that is available to other applications and users.
+Currently, this is for Android 10 (API level 29) or higher.  
 
 ```rust
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicGeneralPurposeDir, PublicImageDir, PublicStorage};
@@ -221,6 +222,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     // Get the absolute path.
     // Apps require no permissions to read or write to this path.
     let path: std::path::PathBuf = storage.resolve_path(PrivateDir::Cache)?;
+
 
     // Write the contents.
     // This is wrapper of above resolve_path and std::fs::write
