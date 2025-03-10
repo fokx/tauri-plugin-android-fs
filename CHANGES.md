@@ -1,4 +1,8 @@
 # Version 4.4.2
+- Add `FileUri::to_string`
+- Add `FileUri::from_str`
+
+# Version 4.4.2
 - Update documentation.
 
 # Version 4.4.1

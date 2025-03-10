@@ -32,6 +32,17 @@ pub struct FileUri {
     pub(crate) document_top_tree_uri: Option<String>,
 }
 
+impl FileUri {
+
+    pub fn to_string(&self) -> crate::Result<String> {
+        serde_json::to_string(self).map_err(Into::into)
+    }
+
+    pub fn from_str(s: &str) -> crate::Result<Self> {
+        serde_json::from_str(s).map_err(Into::into)
+    }
+}
+
 impl From<tauri_plugin_fs::FilePath> for FileUri {
 
     fn from(value: tauri_plugin_fs::FilePath) -> Self {
