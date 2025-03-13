@@ -102,7 +102,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
         // write contents
         if let Err(e) = api.write(&new_file_uri, "contents") {
             // handle err
-            api.remove_file(&new_file_uri)?;
+            let _ = api.remove_file(&new_file_uri);
             return Err(e)
         }
         
@@ -181,7 +181,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     // write the contents to the PNG image
     if let Err(e) = api.write(&uri, &contents) {
         // handle err
-        api.remove_file(&uri)?;
+        let _ = api.remove_file(&uri);
         return Err(e)
     }
 
@@ -201,7 +201,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     // write the contents to the text file
     if let Err(e) = api.write(&uri, &contents) {
         // handle err
-        api.remove_file(&uri)?;
+        let _ = api.remove_file(&uri);
         return Err(e)
     }
 
