@@ -165,7 +165,8 @@ pub enum PrivateDir {
 
     /// The application specific persistent-data directory.  
     /// 
-    /// The system prevents other apps from accessing these locations, and on Android 10 (API level 29) and higher, these locations are encrypted.  
+    /// The system prevents other apps and user from accessing these locations. 
+    /// In cases where the device is rooted or the user has special permissions, the user may be able to access this.   
     ///  
     /// These files will be deleted when the app is uninstalled and may also be deleted at the user’s request.  
     /// 
@@ -174,7 +175,8 @@ pub enum PrivateDir {
 
     /// The application specific cache directory.  
     /// 
-    /// The system prevents other apps from accessing these locations, and on Android 10 (API level 29) and higher, these locations are encrypted.  
+    /// The system prevents other apps and user from accessing these locations. 
+    /// In cases where the device is rooted or the user has special permissions, the user may be able to access this.   
     /// 
     /// These files will be deleted when the app is uninstalled and may also be deleted at the user’s request. 
     /// In addition, the system will automatically delete files in this directory as disk space is needed elsewhere on the device.  

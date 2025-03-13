@@ -1,3 +1,6 @@
+# Version 4.5.1
+- Fix documentation.
+
 # Version 4.5.0
 - Add `FileUri::to_string`
 - Add `FileUri::from_str`
