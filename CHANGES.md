@@ -1,3 +1,6 @@
+# Version 4.5.2
+- Fix an issue where the UI would freeze and become ANR error if the response was too long when using `AndroidFs::read_dir`.
+
 # Version 4.5.1
 - Fix documentation.
 

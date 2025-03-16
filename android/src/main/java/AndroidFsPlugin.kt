@@ -21,6 +21,10 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @InvokeArg
 class GetFileDescriptorArgs {
@@ -231,10 +235,24 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
         try {
             val args = invoke.parseArgs(CreateFileInDirArgs::class.java)
 
-            val res = getFileController(args.dir)
-                .createFile(args.dir, args.relativePath, args.mimeType)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                   val res = getFileController(args.dir)
+                        .createFile(args.dir, args.relativePath, args.mimeType)
 
-            invoke.resolve(res)
+                    // 必要ないかもしれないが念の為
+                    withContext(Dispatchers.Main) {
+                        invoke.resolve(res) 
+                    }
+                }
+                catch (ex: Exception) {
+                    withContext(Dispatchers.Main) {
+                        val message = ex.message ?: "Failed to invoke createFile."
+                        Logger.error(message)
+                        invoke.reject(message)
+                    }
+                }
+            }
         } catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke createFileInDir."
             Logger.error(message)
@@ -246,10 +264,25 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     fun readDir(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(ReadDirArgs::class.java)
-
-            val res = JSObject()
-            res.put("entries", getFileController(args.uri).readDir(args.uri))
-            invoke.resolve(res)
+            
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val res = JSObject()
+                    res.put("entries", getFileController(args.uri).readDir(args.uri))
+                   
+                    // 必要ないかもしれないが念の為
+                    withContext(Dispatchers.Main) {
+                        invoke.resolve(res) 
+                    }
+                }
+                catch (ex: Exception) {
+                    withContext(Dispatchers.Main) {
+                        val message = ex.message ?: "Failed to invoke readDir."
+                        Logger.error(message)
+                        invoke.reject(message)
+                    }
+                }
+            }
         } catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke readDir."
             Logger.error(message)
