@@ -464,7 +464,13 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
                     val intent: Intent? = result.data
                     if (intent != null) {
                         val uri = intent.data
-                        if (uri != null) {
+
+                        // file descriptor を介して google drive 上のファイルに書き込めない(読み取りはできる)ため、nullを返す。
+                        // google drive 上のファイルに書き込みたい場合は output streamを用いる必要がある。
+                        if (uri == null || uri.authority == "com.google.android.apps.docs.storage") {
+                            callResult.put("uri", null)
+                        }
+                        else {
                             val o = JSObject()
                             o.put("uri", uri.toString())
                             o.put("documentTopTreeUri", null)

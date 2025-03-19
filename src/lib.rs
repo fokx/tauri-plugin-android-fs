@@ -286,6 +286,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// By default, returned uri is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     /// 
+    /// Note that if the user selects a file on Google drive, this function returns None. 
+    /// This is because it is not possible to write files on Google drive using FileDescriptor.
+    /// 
     /// # Support
     /// All Android version.
     fn show_save_file_dialog(
