@@ -77,11 +77,7 @@ class MediaFileController(private val activity: Activity): FileController {
     }
 
     override fun readDir(dirUri: FileUri): JSArray {
-        throw Error("Unsupported: ${dirUri.uri}")
-    }
-
-    override fun takePersistableUriPermission(uri: FileUri, flag: Int) {
-        activity.contentResolver.takePersistableUriPermission(Uri.parse(uri.uri), flag)
+        throw Error("Unsupported or not dir: ${dirUri.uri}")
     }
 
 

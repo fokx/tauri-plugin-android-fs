@@ -1,3 +1,20 @@
+# Version 5.0.0
+- Remove deperecated items.
+- Remove `PersistableAccessMode`
+- Remove `AndroidFs::take_persistable_uri_permission`
+- Change `Entry { byte_size, .. }` to `Entry { len, .. }`
+- Add `#[non_exhaustive]` attributes to `VisualMediaTarget`
+- Add arg `take_persistable_uri_permission` to 
+    `AndroidFs::show_open_file_dialog`, 
+    `AndroidFs::show_open_visual_media_dialog`, 
+    `AndroidFs::show_save_file_dialog`
+- Add arg `initial_location` to 
+    `AndroidFs::show_open_file_dialog`, 
+    `AndroidFs::show_save_file_dialog`
+- Add `AndroidFs::show_manage_dir_dialog`
+- Deprecate `AndroidFs::show_open_dir_dialog`
+- Update documentation.
+
 # Version 4.5.3
 - Change the `AndroidFs::show_save_file_dialog` to return None when a file on Google Drive is selected.
 - Update documentation.

@@ -14,6 +14,4 @@ interface FileController {
     fun createFile(dirUri: FileUri, relativePath: String, mimeType: String): JSObject
 
     fun delete(uri: FileUri)
-
-    fun takePersistableUriPermission(uri: FileUri, flag: Int)
 }

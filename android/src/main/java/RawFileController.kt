@@ -40,7 +40,24 @@ class RawFileController: FileController {
     // この関数が返すUriは他のアプリに共有できない
     override fun createFile(dirUri: FileUri, relativePath: String, mimeType: String): JSObject {
         val dir = File(Uri.parse(dirUri.uri).path!!)
-        val file = File(dir.path + "/" + relativePath.trimStart('/'))
+        val baseFile = File(dir.path + "/" + relativePath.trimStart('/'))
+        val fileName = baseFile.nameWithoutExtension
+        val fileExtension = baseFile.extension
+    
+        var file = baseFile
+        var counter = 1
+    
+        // 同じ名前のファイルが既に存在する場合、連番を追加してファイル名を変更
+        while (file.exists()) {
+            val newFileName = if (fileExtension.isEmpty()) {
+                "$fileName($counter)"
+            } else {
+                "$fileName($counter).$fileExtension"
+            }
+            file = File(baseFile.parentFile, newFileName)
+            counter++
+        }
+    
         file.parentFile?.mkdirs()
         file.createNewFile()
 
@@ -54,10 +71,6 @@ class RawFileController: FileController {
         if (!File(Uri.parse(uri.uri).path!!).delete()) {
             throw Error("Failed to delete file: ${uri.uri}")
         }
-    }
-
-    override fun takePersistableUriPermission(uri: FileUri, flag: Int) {
-        // Do nothing
     }
 
 

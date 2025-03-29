@@ -41,18 +41,29 @@ class GetNameArgs {
 class ShowOpenFileDialogArgs {
     lateinit var mimeTypes: Array<String>
     var multiple: Boolean = false
+    var initialLocation: FileUri? = null
+    var takePersistableUriPermission: Boolean = false
 }
 
 @InvokeArg
 class ShowOpenVisualMediaDialogArgs {
     lateinit var target: VisualMediaPickerType
     var multiple: Boolean = false
+    var takePersistableUriPermission: Boolean = false
+}
+
+@InvokeArg
+class ShowManageDirDialogArgs {
+    var takePersistableUriPermission: Boolean = false
+    var initialLocation: FileUri? = null
 }
 
 @InvokeArg
 class ShowSaveFileDialogArgs {
-    lateinit var defaultFileName: String
+    var initialLocation: FileUri? = null
+    lateinit var initialFileName: String
     lateinit var mimeType: String
+    var takePersistableUriPermission: Boolean = false
 }
 
 @InvokeArg
@@ -71,19 +82,6 @@ class GetPublicDirInfo {
 @InvokeArg
 class GetMimeTypeArgs {
     lateinit var uri: FileUri
-}
-
-@InvokeArg
-class TakePersistableUriPermissionArgs {
-    lateinit var uri: FileUri
-    lateinit var mode: PersistableUriPermissionMode
-}
-
-@InvokeArg
-enum class PersistableUriPermissionMode {
-    ReadOnly,
-    WriteOnly,
-    ReadAndWrite
 }
 
 @InvokeArg
@@ -157,6 +155,28 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
             else -> throw Error("Unsupported uri: $uri")
         }
     }
+
+    private fun tryAsDocumentUri(uri: FileUri): Uri? {
+        val documentTopTreeUri = uri.documentTopTreeUri
+        val uri = Uri.parse(uri.uri)
+
+        when {
+            (documentTopTreeUri != null || DocumentsContract.isDocumentUri(activity, uri)) -> {
+                return uri
+            }
+            (uri.authority == MediaStore.AUTHORITY) -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    try {
+                        return MediaStore.getDocumentUri(activity, uri)
+                    }
+                    catch (ignore: Exception) {}
+                }
+            }
+        }
+
+        return null
+    }
+
 
     @Command
     fun getPublicDirInfo(invoke: Invoke) {
@@ -319,24 +339,39 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
-    fun showOpenDirDialog(invoke: Invoke) {
+    fun showManageDirDialog(invoke: Invoke) {
         try {
+            val args = invoke.parseArgs(ShowManageDirDialogArgs::class.java)
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            startActivityForResult(invoke, intent, "dirDialogResult")
+            
+            args.initialLocation?.let { uri ->
+                tryAsDocumentUri(uri)?.let { dUri ->
+                    intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, dUri)
+                }
+            }
+
+            startActivityForResult(invoke, intent, "handleShowManageDirDialog")
         } catch (ex: Exception) {
-            val message = ex.message ?: "Failed to invoke showOpenDirDialog."
+            val message = ex.message ?: "Failed to invoke showManageDirDialog."
             Logger.error(message)
             invoke.reject(message)
         }
     }
 
     @ActivityCallback
-    private fun dirDialogResult(invoke: Invoke, result: ActivityResult) {
+    private fun handleShowManageDirDialog(invoke: Invoke, result: ActivityResult) {
         try {
             val res = JSObject()
 
             val uri = result.data?.data
             if (uri != null) {
+                if (invoke.parseArgs(ShowManageDirDialogArgs::class.java).takePersistableUriPermission) {
+                    activity.contentResolver.takePersistableUriPermission(
+                        uri, 
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                }
+
                 val builtUri = DocumentsContract.buildDocumentUriUsingTree(
                     uri,
                     DocumentsContract.getTreeDocumentId(uri)
@@ -389,32 +424,18 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
-    fun takePersistableUriPermission(invoke: Invoke) {
-        try {
-            val args = invoke.parseArgs(TakePersistableUriPermissionArgs::class.java)
-
-            val flag = when (args.mode) {
-                PersistableUriPermissionMode.ReadOnly -> Intent.FLAG_GRANT_READ_URI_PERMISSION
-                PersistableUriPermissionMode.WriteOnly -> Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                PersistableUriPermissionMode.ReadAndWrite -> Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-            }
-
-            getFileController(args.uri).takePersistableUriPermission(args.uri, flag)
-            invoke.resolve()
-        } catch (ex: Exception) {
-            val message = ex.message ?: "Failed to invoke takePersistableUriPermission."
-            Logger.error(message)
-            invoke.reject(message)
-        }
-    }
-
-    @Command
     fun showOpenFileDialog(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(ShowOpenFileDialogArgs::class.java)
             val intent = createFilePickerIntent(args.mimeTypes, args.multiple)
 
-            startActivityForResult(invoke, intent, "filePickerResult")
+            args.initialLocation?.let { uri ->
+                tryAsDocumentUri(uri)?.let { dUri ->
+                    intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, dUri)
+                }
+            }
+
+            startActivityForResult(invoke, intent, "handleShowOpenFileDialog")
         } catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke showOpenFileDialog."
             Logger.error(message)
@@ -428,7 +449,7 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
             val args = invoke.parseArgs(ShowOpenVisualMediaDialogArgs::class.java)
             val intent = createVisualMediaPickerIntent(args.multiple, args.target)
 
-            startActivityForResult(invoke, intent, "filePickerResult")
+            startActivityForResult(invoke, intent, "handleShowOpenVisualMediaDialog")
         } catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke showOpenVisualMediaDialog."
             Logger.error(message)
@@ -445,9 +466,15 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
 
             intent.setType(args.mimeType)
             intent.addCategory(Intent.CATEGORY_OPENABLE)
-            intent.putExtra(Intent.EXTRA_TITLE, args.defaultFileName)
+            intent.putExtra(Intent.EXTRA_TITLE, args.initialFileName)
+            
+            args.initialLocation?.let { uri ->
+                tryAsDocumentUri(uri)?.let { dUri ->
+                    intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, dUri)
+                }
+            }
 
-            startActivityForResult(invoke, intent, "saveFileDialogResult")
+            startActivityForResult(invoke, intent, "handleShowSaveFileDialog")
         } catch (ex: Exception) {
             val message = ex.message ?: "Failed to pick save file"
             Logger.error(message)
@@ -456,7 +483,7 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @ActivityCallback
-    fun saveFileDialogResult(invoke: Invoke, result: ActivityResult) {
+    fun handleShowSaveFileDialog(invoke: Invoke, result: ActivityResult) {
         try {
             when (result.resultCode) {
                 Activity.RESULT_OK -> {
@@ -471,6 +498,13 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
                             callResult.put("uri", null)
                         }
                         else {
+                            if (invoke.parseArgs(ShowSaveFileDialogArgs::class.java).takePersistableUriPermission) {
+                                activity.contentResolver.takePersistableUriPermission(
+                                    uri, 
+                                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                                )
+                            }
+
                             val o = JSObject()
                             o.put("uri", uri.toString())
                             o.put("documentTopTreeUri", null)
@@ -553,15 +587,18 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @ActivityCallback
-    fun filePickerResult(invoke: Invoke, result: ActivityResult) {
+    fun handleShowOpenFileDialog(invoke: Invoke, result: ActivityResult) {
         try {
             when (result.resultCode) {
                 Activity.RESULT_OK -> {
-                    val callResult = createPickFilesResult(result.data)
+                    val callResult = createPickFilesResult(
+                        result.data,
+                        invoke.parseArgs(ShowOpenFileDialogArgs::class.java).takePersistableUriPermission
+                    )
                     invoke.resolve(callResult)
                 }
                 Activity.RESULT_CANCELED -> {
-                    val callResult = createPickFilesResult(null)
+                    val callResult = createPickFilesResult(null, false)
                     invoke.resolve(callResult)
                 }
             }
@@ -572,28 +609,60 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
-    private fun createPickFilesResult(data: Intent?): JSObject {
+    @ActivityCallback
+    fun handleShowOpenVisualMediaDialog(invoke: Invoke, result: ActivityResult) {
+        try {
+            when (result.resultCode) {
+                Activity.RESULT_OK -> {
+                    val callResult = createPickFilesResult(
+                        result.data,
+                        invoke.parseArgs(ShowOpenVisualMediaDialogArgs::class.java).takePersistableUriPermission
+                    )
+                    invoke.resolve(callResult)
+                }
+                Activity.RESULT_CANCELED -> {
+                    val callResult = createPickFilesResult(null, false)
+                    invoke.resolve(callResult)
+                }
+            }
+        } catch (ex: java.lang.Exception) {
+            val message = ex.message ?: "Failed to read file pick result"
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    private fun createPickFilesResult(
+        data: Intent?,
+        takePersistableUriPermission: Boolean
+    ): JSObject {
+
         val callResult = JSObject()
         if (data == null) {
             callResult.put("uris", JSArray())
             return callResult
         }
-        val uris: MutableList<String?> = ArrayList()
+        val uris: MutableList<Uri?> = ArrayList()
         if (data.clipData == null) {
             val uri: Uri? = data.data
-            uris.add(uri?.toString())
-        } else {
+            uris.add(uri)
+        }
+        else {
             for (i in 0 until data.clipData!!.itemCount) {
                 val uri: Uri = data.clipData!!.getItemAt(i).uri
-                uris.add(uri.toString())
+                uris.add(uri)
             }
         }
 
         val buffer = JSArray()
         for (uri in uris) {
             if (uri != null) {
+                if (takePersistableUriPermission) {
+                    activity.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
                 val o = JSObject()
-                o.put("uri", uri)
+                o.put("uri", uri.toString())
                 o.put("documentTopTreeUri", null)
                 buffer.put(o)
             }

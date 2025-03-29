@@ -4,7 +4,11 @@ use tauri::{plugin::{PluginApi, PluginHandle}, AppHandle, Runtime};
 use crate::{models::*, AndroidFs, AndroidFsExt, PrivateStorage, PublicStorage};
 
 
-pub struct AndroidFsImpl<R: Runtime>(PluginHandle<R>, AppHandle<R>);
+pub struct AndroidFsImpl<R: Runtime> {
+    api: PluginHandle<R>, 
+    app: AppHandle<R>, 
+    intent_lock: std::sync::Mutex<()>
+}
 
 impl<R: Runtime> AndroidFsImpl<R> {
 
@@ -13,7 +17,11 @@ impl<R: Runtime> AndroidFsImpl<R> {
         api: PluginApi<R, C>,
     ) -> crate::Result<impl AndroidFs<R>> {
 
-        Ok(Self(api.register_android_plugin("com.plugin.android_fs", "AndroidFsPlugin")?, app.clone()))
+        Ok(Self {
+            api: api.register_android_plugin("com.plugin.android_fs", "AndroidFsPlugin")?, 
+            app: app.clone(),
+            intent_lock: std::sync::Mutex::new(())
+        })
     }
 }
 
@@ -40,7 +48,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
         let uri = uri.clone();
 
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("getName", Req { uri })
             .map(|v| v.name)
             .map_err(Into::into)
@@ -52,7 +60,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
         let uri = uri.clone();
 
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("getMimeType", Req { uri })
             .map(|v| v.value)
             .map_err(Into::into)
@@ -72,7 +80,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
             FileAccessMode::ReadWrite => "rw",
         };
 
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("getFileDescriptor", Req { uri, mode })
             .map(|v| {
                 use std::os::fd::FromRawFd;
@@ -83,17 +91,21 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
     fn show_open_file_dialog(
         &self,
+        initial_location: Option<&FileUri>,
         mime_types: &[&str],
-        multiple: bool
+        multiple: bool,
+        take_persistable_uri_permission: bool
     ) -> crate::Result<Vec<FileUri>> {
 		
-        impl_serde!(struct Req { mime_types: Vec<String>, multiple: bool });
+        impl_serde!(struct Req { mime_types: Vec<String>, multiple: bool, take_persistable_uri_permission: bool, initial_location: Option<FileUri> });
         impl_serde!(struct Res { uris: Vec<FileUri> });
     
+        let initial_location = initial_location.map(Clone::clone);
         let mime_types = mime_types.iter().map(|s| s.to_string()).collect();
 
-        self.0  
-            .run_mobile_plugin::<Res>("showOpenFileDialog", Req { mime_types, multiple })
+        let _guard = self.intent_lock.lock();
+        self.api
+            .run_mobile_plugin::<Res>("showOpenFileDialog", Req { mime_types, multiple, take_persistable_uri_permission, initial_location })
             .map(|v| v.uris)
             .map_err(Into::into)
     }
@@ -101,41 +113,56 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
     fn show_open_visual_media_dialog(
         &self,
         target: VisualMediaTarget,
-        multiple: bool
+        multiple: bool,
+        take_persistable_uri_permission: bool
     ) -> crate::Result<Vec<FileUri>> {
 		
-        impl_serde!(struct Req { multiple: bool, target: VisualMediaTarget });
+        impl_serde!(struct Req { multiple: bool, target: VisualMediaTarget, take_persistable_uri_permission: bool });
         impl_serde!(struct Res { uris: Vec<FileUri> });
     
-        self.0  
-            .run_mobile_plugin::<Res>("showOpenVisualMediaDialog", Req { multiple, target })
+        let _guard = self.intent_lock.lock();
+        self.api
+            .run_mobile_plugin::<Res>("showOpenVisualMediaDialog", Req { multiple, target, take_persistable_uri_permission })
             .map(|v| v.uris)
             .map_err(Into::into)
     }
 
     fn show_save_file_dialog(
         &self,
-        default_file_name: impl AsRef<str>,
+        initial_location: Option<&FileUri>,
+        initial_file_name: impl AsRef<str>,
         mime_type: Option<&str>,
+        take_persistable_uri_permission: bool
     ) -> crate::Result<Option<FileUri>> {
 
-        impl_serde!(struct Req<'a> { default_file_name: &'a str, mime_type: &'a str });
+        impl_serde!(struct Req<'a> { initial_file_name: &'a str, mime_type: &'a str, take_persistable_uri_permission: bool, initial_location: Option<FileUri> });
         impl_serde!(struct Res { uri: Option<FileUri> });
 
-        let default_file_name = default_file_name.as_ref();
+        let initial_location = initial_location.map(Clone::clone);
+        let initial_file_name = initial_file_name.as_ref();
         let mime_type = mime_type.as_ref().map(|s| s.as_ref()).unwrap_or("application/octet-stream");
     
-        self.0  
-            .run_mobile_plugin::<Res>("showSaveFileDialog", Req { default_file_name, mime_type })
+        let _guard = self.intent_lock.lock();
+        self.api
+            .run_mobile_plugin::<Res>("showSaveFileDialog", Req { initial_file_name, mime_type, take_persistable_uri_permission, initial_location })
             .map(|v| v.uri)
             .map_err(Into::into)
     }
 
-    fn show_open_dir_dialog(&self) -> crate::Result<Option<FileUri>> {
+    fn show_manage_dir_dialog(
+        &self,
+        initial_location: Option<&FileUri>,
+        take_persistable_uri_permission: bool
+    ) -> crate::Result<Option<FileUri>> {
+        
+        impl_serde!(struct Req { take_persistable_uri_permission: bool, initial_location: Option<FileUri> });
         impl_serde!(struct Res { uri: Option<FileUri> });
     
-        self.0  
-            .run_mobile_plugin::<Res>("showOpenDirDialog", "")
+        let initial_location = initial_location.map(Clone::clone);
+
+        let _guard = self.intent_lock.lock();
+        self.api
+            .run_mobile_plugin::<Res>("showManageDirDialog", Req { take_persistable_uri_permission, initial_location })
             .map(|v| v.uri)
             .map_err(Into::into)
     }
@@ -146,7 +173,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
         let uri = uri.clone();
     
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("delete", Req { uri })
             .map(|_| ())
             .map_err(Into::into)
@@ -169,7 +196,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         let mime_type = mime_type.unwrap_or("application/octet-stream");
         let dir = dir.clone();
 
-        self.0  
+        self.api
             .run_mobile_plugin::<FileUri>("createFile", Req { dir, mime_type, relative_path })
             .map_err(Into::into)
     }
@@ -181,45 +208,30 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
         let uri = uri.clone();
     
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("readDir", Req { uri })
-            .map(|v| 
-                v.entries
-                    .into_iter()
-                    .map(|v| match v.mime_type {
-                        Some(mime_type) => Entry::File {
-                            name: v.name,
-                            last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
-                            byte_size: v.byte_size as u64,
-                            mime_type,
-                            uri: v.uri,
-                        },
-                        None => Entry::Dir {
-                            name: v.name,
-                            last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
-                            uri: v.uri,
-                        }
-                    })
-            )
-            .map_err(Into::into)
-    }
-    
-    fn take_persistable_uri_permission(&self, uri: FileUri, mode: PersistableAccessMode) -> crate::Result<()> {
-        impl_serde!(struct Req { uri: FileUri, mode: PersistableAccessMode });
-        impl_serde!(struct Res;);
-
-        let uri = uri.clone();
-
-        self.0  
-            .run_mobile_plugin::<Res>("takePersistableUriPermission", Req { uri, mode })
-            .map(|_| ())
+            .map(|v| v.entries.into_iter())
+            .map(|v| v.map(|v| match v.mime_type {
+                Some(mime_type) => Entry::File {
+                    name: v.name,
+                    last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
+                    len: v.byte_size as u64,
+                    mime_type,
+                    uri: v.uri,
+                },
+                None => Entry::Dir {
+                    name: v.name,
+                    last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
+                    uri: v.uri,
+                }
+            }))
             .map_err(Into::into)
     }
 
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {
         impl_serde!(struct Res { value: bool });
 
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("isVisualMediaDialogAvailable", "")
             .map(|v| v.value)
             .map_err(Into::into)
@@ -234,7 +246,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
     }
 
     fn app_handle(&self) -> &tauri::AppHandle<R> {
-        &self.1
+        &self.app
     }
 }
 
@@ -258,7 +270,7 @@ impl<R: Runtime> PublicStorage<R> for AndroidFsImpl<R> {
             PublicDir::GeneralPurpose(_) => (mime_type.unwrap_or("application/octet-stream"), "GeneralPurpose"),
         };
 
-        let (dir_name, dir_parent_uri) = self.0  
+        let (dir_name, dir_parent_uri) = self.api
             .run_mobile_plugin::<Res>("getPublicDirInfo", Req { dir, dir_type })
             .map(|v| (v.name, v.uri))?;
         
@@ -278,7 +290,7 @@ impl<R: Runtime> PublicStorage<R> for AndroidFsImpl<R> {
     fn is_audiobooks_dir_available(&self) -> crate::Result<bool> {
         impl_serde!(struct Res { value: bool });
 
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("isAudiobooksDirAvailable", "")
             .map(|v| v.value)
             .map_err(Into::into)
@@ -287,14 +299,14 @@ impl<R: Runtime> PublicStorage<R> for AndroidFsImpl<R> {
     fn is_recordings_dir_available(&self) -> crate::Result<bool> {
         impl_serde!(struct Res { value: bool });
 
-        self.0  
+        self.api
             .run_mobile_plugin::<Res>("isRecordingsDirAvailable", "")
             .map(|v| v.value)
             .map_err(Into::into)
 	}
 
     fn app_handle(&self) -> &tauri::AppHandle<R> {
-        &self.1
+        &self.app
     }
 }
 
@@ -306,7 +318,7 @@ impl<R: Runtime> PrivateStorage<R> for AndroidFsImpl<R> {
         static PATHS: std::sync::OnceLock<Paths> = std::sync::OnceLock::new();
 
         if PATHS.get().is_none() {
-            let paths = self.0  
+            let paths = self.api
                 .run_mobile_plugin::<Paths>("getPrivateBaseDirAbsolutePaths", "")?;
 
             let _ = PATHS.set(paths);
@@ -321,6 +333,6 @@ impl<R: Runtime> PrivateStorage<R> for AndroidFsImpl<R> {
     }
 
     fn app_handle(&self) -> &tauri::AppHandle<R> {
-        &self.1
+        &self.app
     }
 }

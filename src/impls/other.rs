@@ -34,8 +34,10 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
     fn show_open_file_dialog(
         &self,
+        _initial_location: Option<&FileUri>,
         _mime_types: &[&str],
-        _multiple: bool
+        _multiple: bool,
+        _take_persistable_uri_permission: bool
     ) -> crate::Result<Vec<FileUri>> {
 		
         Err(crate::Error::NotAndroid)
@@ -44,7 +46,8 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
     fn show_open_visual_media_dialog(
         &self,
         _target: VisualMediaTarget,
-        _multiple: bool
+        _multiple: bool,
+        _take_persistable_uri_permission: bool
     ) -> crate::Result<Vec<FileUri>> {
 		
         Err(crate::Error::NotAndroid)
@@ -52,8 +55,10 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
     fn show_save_file_dialog(
         &self,
-        _default_file_name: impl AsRef<str>,
+        _initial_location: Option<&FileUri>,
+        _initial_file_name: impl AsRef<str>,
         _mime_type: Option<&str>,
+        _take_persistable_uri_permission: bool
     ) -> crate::Result<Option<FileUri>> {
 
         Err(crate::Error::NotAndroid)
@@ -89,25 +94,15 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
     
-    fn create_file_in_public_location(
-        &self,
-        _dir: impl Into<PublicDir>,
-        _relative_path_with_sub_dir: impl AsRef<str>, 
-        _mime_type: Option<&str>
-    ) -> crate::Result<FileUri> {
-
-        Err(crate::Error::NotAndroid)
-    }
-    
-    fn read_dir(&self, _path: &FileUri) -> crate::Result<impl Iterator<Item = Entry>> {
+    fn read_dir(&self, _uri: &FileUri) -> crate::Result<impl Iterator<Item = Entry>> {
         Err::<std::iter::Empty<_>, _>(crate::Error::NotAndroid)
     }
     
-    fn take_persistable_uri_permission(&self, _uri: FileUri, _mode: PersistableAccessMode) -> crate::Result<()> {
-        Err(crate::Error::NotAndroid)
-    }
-    
-    fn show_open_dir_dialog(&self) -> crate::Result<Option<FileUri>> {
+    fn show_manage_dir_dialog(
+        &self,
+        _initial_location: Option<&FileUri>,
+        _take_persistable_uri_permission: bool
+    ) -> crate::Result<Option<FileUri>> {
         Err(crate::Error::NotAndroid)
     }
 

@@ -7,8 +7,7 @@ mod error;
 use std::io::{Read, Write};
 
 pub use models::*;
-#[allow(deprecated)]
-pub use error::{Error, Result, PathError};
+pub use error::{Error, Result};
 pub use impls::{AndroidFsExt, init};
 
 /// API
@@ -131,13 +130,22 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// All Android version.
     fn remove_dir(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Creates a new empty file at the specified directory, and returns **read-write-removeable** uri.    
-    /// If the same file name already exists, a sequential number is added to the name. And recursively create sub directories if they are missing.  
-    /// 
-    /// # Note
-    /// `mime_type`  specify the type of the file to be created. 
-    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
-    /// 
+    /// Creates a new empty file in the specified location and returns a **persistent read-write-removable** uri.  
+    ///  
+    /// # Args  
+    /// - ***dir*** :  
+    /// The uri of the base directory.  
+    ///  
+    /// - ***relative_path*** :  
+    /// The file path relative to the base directory.  
+    /// If a file with the same name already exists, a sequential number will be appended to ensure uniqueness.  
+    /// Any missing subdirectories in the specified path will be created automatically.  
+    ///  
+    /// - ***mime_type*** :  
+    /// The MIME type of the file to be created.  
+    /// Specifying this is recommended whenever possible.  
+    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
+    ///  
     /// # Support
     /// All Android version.
     fn create_file(
@@ -147,155 +155,204 @@ pub trait AndroidFs<R: tauri::Runtime> {
         mime_type: Option<&str>
     ) -> crate::Result<FileUri>;
 
-    /// Please use [`PublicStorage::create_file_in_public_app_dir`] insted.
-    #[deprecated = "Please use PublicStorage::create_file_in_public_app_dir insted."]
-    #[warn(deprecated)]
-    fn create_file_in_public_location(
-        &self,
-        dir: impl Into<PublicDir>,
-        relative_path: impl AsRef<str>, 
-        mime_type: Option<&str>
-    ) -> crate::Result<FileUri> {
-
-        self.public_storage().create_file_in_public_app_dir(dir, relative_path, mime_type)
-    }
-
-    /// Returns the unordered child entries of the specified directory.  
-    /// Returned [`Entry`](crate::Entry) contains file or directory uri.
-    ///
-    /// # Note
-    /// By default, children are valid until the app is terminated.  
-    /// To persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`]. 
-    /// However, if you have obtained persistent permissions for the origin directory (e.g. parent, grand parents), it is unnecessary.
-    /// 
-    /// The returned type is an iterator because of the data formatting and the file system call is not executed lazily.
+    /// Returns the child entries of the specified directory.  
+    /// Each returned entry contains a uri for either a file or a directory.  
+    /// The order of the entries is not guaranteed.  
+    ///  
+    /// # Note  
+    /// The permissions and validity period of the returned uris depend on the origin directory.  
+    /// (e.g., the top directory selected by [`AndroidFs::show_open_dir_dialog`])  
+    ///  
+    /// The returned type is an iterator because of the data formatting and the file system call is not executed lazily.  
+    /// Thus, for directories with thousands or tens of thousands of elements, it may take several seconds.  
     /// 
     /// # Support
     /// All Android version.
     fn read_dir(&self, uri: &FileUri) -> crate::Result<impl Iterator<Item = Entry>>;
 
-    /// Take persistent permission to access the file, directory and its descendants.  
-    /// 
-    /// Preserve access across app and device restarts. 
-    /// If you only need it until the end of the app session, you do not need to use this.  
-    /// 
-    /// This works by just calling, without displaying any confirmation to the user.  
-    /// 
-    /// # Note
-    /// Even after calling this, the app doesn't retain access to the entry if it is moved or deleted.  
-    /// 
-    /// # Support
-    /// All Android version.
-    fn take_persistable_uri_permission(&self, uri: FileUri, mode: PersistableAccessMode) -> crate::Result<()>;
-
-    /// Open a dialog for file selection.  
-    /// This returns a **read-only** uris. If no file is selected or canceled by user, it is an empty.  
-    /// 
+    /// Opens a system file picker and returns a **readonly** uris.  
+    /// If no file is selected or the user cancels, an empty vec is returned.  
+    ///  
     /// For images and videos, consider using [`AndroidFs::show_open_visual_media_dialog`] instead.  
+    ///  
+    /// # Args  
+    /// - ***initial_location*** :  
+    /// Indicate the initial location of dialog.  
+    /// System will do its best to launch the dialog in the specified entry 
+    /// if it's a directory, or the directory that contains the specified file if not.  
+    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
     /// 
+    /// - ***mime_types*** :  
+    /// The MIME types of the file to be selected.  
+    /// However, there is no guarantee that the returned file will match the specified types.  
+    /// If left empty, all file types will be available (equivalent to `["*/*"]`).  
+    ///  
+    /// - ***multiple*** :  
+    /// Indicates whether multiple file selection is allowed.  
+    ///  
+    /// - ***take_persistable_uri_permission*** :  
+    /// Indicates whether to retain access permission for selected files across app restarts.  
+    /// If set to `false` (default), the uris will remain valid only until the app is terminated.  
+    /// Set `true` to only if persistent access is required.  
+    ///  
     /// # Issue
-    /// **Dialog has an issue. Details and resolution are following.**  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
-    /// 
-    /// # Note
-    /// `mime_types` represents the types of files that should be selected. 
-    /// However, there is no guarantee that the returned file will match the specified types.    
-    /// If this is empty, all file types will be available for selection. 
-    /// This is equivalent to `["*/*"]`, and it will invoke the standard file picker in most cases.  
-    /// 
-    /// By default, returned uri is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
-    /// 
+    /// This dialog has known issues. See the following for details and workarounds
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
+    ///  
     /// # Support
     /// All Android version.
+    /// 
+    /// # References
+    /// <https://developer.android.com/reference/android/content/Intent#ACTION_OPEN_DOCUMENT>
     fn show_open_file_dialog(
         &self,
+        initial_location: Option<&FileUri>,
         mime_types: &[&str],
-        multiple: bool
+        multiple: bool,
+        take_persistable_uri_permission: bool,
     ) -> crate::Result<Vec<FileUri>>;
 
-    /// Opens a dialog for media file selection, such as images and videos.  
-    /// This returns a **read-only** uris. If no file is selected or canceled by user, it is an empty.  
-    /// 
-    /// This is more user-friendly than [`AndroidFs::show_open_file_dialog`].  
-    ///
+    /// Opens a media picker and returns a **readonly** uris.  
+    /// If no file is selected or the user cancels, an empty vec is returned.  
+    ///  
+    /// This media picker provides a browsable interface that presents the user with their media library, 
+    /// sorted by date from newest to oldest. 
+    ///  
+    /// # Args  
+    /// - ***target*** :  
+    /// The media type of the file to be selected.  
+    /// Images or videos, or both.  
+    ///  
+    /// - ***multiple*** :  
+    /// Indicates whether multiple file selection is allowed.  
+    ///  
+    /// - ***take_persistable_uri_permission*** :  
+    /// Indicates whether to retain access permission for selected files across app restarts.  
+    /// If set to `false` (default), the uris will remain valid only until the app is terminated.  
+    /// Set `true` to only if persistent access is required.  
+    ///  
     /// # Issue
-    /// **Dialog has an issue. Details and resolution are following.**  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
-    /// 
-    /// # Note
-    /// By default, returned uri is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].  
-    /// 
-    /// The file obtained from this function cannot retrieve the correct file name using [`AndroidFs::get_name`].
+    /// This dialog has known issues. See the following for details and workarounds
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
+    ///  
+    /// The file obtained from this function cannot retrieve the correct file name using [`AndroidFs::get_name`].  
     /// Instead, it will be assigned a sequential number, such as `1000091523.png`.  
-    /// <https://issuetracker.google.com/issues/268079113>  
-    ///
+    /// - <https://issuetracker.google.com/issues/268079113>  
+    ///  
     /// # Support
-    /// This is available on devices that meet the following criteria:
-    ///  - Run Android 11 (API level 30) or higher
-    ///  - Receive changes to Modular System Components through Google System Updates
+    /// This feature is available on devices that meet the following criteria:  
+    /// - Running Android 11 (API level 30) or higher  
+    /// - Receive changes to Modular System Components through Google System Updates  
     ///  
     /// Availability on a given device can be verified by calling [`AndroidFs::is_visual_media_dialog_available`].  
-    /// If not supported, this functions the same as [`AndroidFs::show_open_file_dialog`].
+    /// If not supported, this function behaves the same as [`AndroidFs::show_open_file_dialog`].  
+    /// 
+    /// # References
+    /// <https://developer.android.com/training/data-storage/shared/photopicker>
     fn show_open_visual_media_dialog(
         &self,
         target: VisualMediaTarget,
-        multiple: bool
+        multiple: bool,
+        take_persistable_uri_permission: bool
     ) -> crate::Result<Vec<FileUri>>;
 
-    /// Open a dialog for directory selection,
-    /// allowing the app to read and write any file in the selected directory and its subdirectories.  
-    /// If canceled by the user, return None.    
+    /// Opens a system directory picker, allowing the creation of a new directory or the selection of an existing one, 
+    /// and returns a **read-write-removable** directory uri.  
+    /// If no directory is selected or the user cancels, `None` is returned. 
     /// 
+    /// # Args  
+    /// - ***initial_location*** :  
+    /// Indicate the initial location of dialog.  
+    /// System will do its best to launch the dialog in the specified entry 
+    /// if it's a directory, or the directory that contains the specified file if not.  
+    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
+    /// 
+    /// - ***take_persistable_uri_permission*** :  
+    /// Indicates whether to retain access permission for entries across app restarts.  
+    /// If set to `false` (default), the uri will remain valid only until the app is terminated.  
+    /// Set `true` to only if persistent access is required.  
+    ///  
     /// # Issue
-    /// **Dialog has an issue. Details and resolution are following.**  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
-    /// 
-    /// # Note
-    /// By default, retruned uri is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
-    /// If you take permission for a directory, you can recursively obtain it for its descendants.
-    /// 
+    /// This dialog has known issues. See the following for details and workarounds
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
+    ///  
     /// # Support
     /// All Android version.
-    fn show_open_dir_dialog(&self) -> crate::Result<Option<FileUri>>;
+    /// 
+    /// # References
+    /// <https://developer.android.com/reference/android/content/Intent#ACTION_OPEN_DOCUMENT_TREE>
+    fn show_manage_dir_dialog(
+        &self,
+        initial_location: Option<&FileUri>,
+        take_persistable_uri_permission: bool
+    ) -> crate::Result<Option<FileUri>>;
 
-    /// Open a dialog for file saving, and return the selected path.  
-    /// This returns a **read-write-removeable** uri. If canceled by the user, return None.    
+    /// Use [`AndroidFs::show_manage_dir_dialog`] instead.
+    #[deprecated = "Confusing name"]
+    #[warn(deprecated)]
+    fn show_open_dir_dialog(&self) -> crate::Result<Option<FileUri>> {
+        self.show_manage_dir_dialog(None, false)
+    }
+
+    /// Opens a dialog to save a file and returns a **writeonly** uri.  
+    /// The returned file may be a newly created file with no content,
+    /// or it may be an existing file with the requested MIME type.  
+    /// If the user cancels, `None` is returned.  
+    ///  
+    /// # Args  
+    /// - ***initial_location*** :  
+    /// Indicate the initial location of dialog.  
+    /// System will do its best to launch the dialog in the specified entry 
+    /// if it's a directory, or the directory that contains the specified file if not.  
+    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
     /// 
-    /// When storing media files such as images, videos, and audio, consider using [`AndroidFs::create_file_in_public_location`].  
-    /// When a file does not need to be accessed by other applications and users, consider using  [`PrivateStorage::write`].  
-    /// These are easier because the destination does not need to be selected in a dialog.  
+    /// - ***initial_file_name*** :  
+    /// An initial file name, but the user may change this value before creating the file.  
     /// 
+    /// - ***mime_type*** :  
+    /// The MIME type of the file to be saved.  
+    /// Specifying this is recommended whenever possible.  
+    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
+    ///  
+    /// - ***take_persistable_uri_permission*** :  
+    /// Indicates whether to retain access permission for selected files across app restarts.  
+    /// If set to `false` (default), the uri will remain valid only until the app is terminated.  
+    /// Set `true` to only if persistent access is required.  
+    ///  
     /// # Issue
-    /// **Dialog has an issue. Details and resolution are following.**  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>
+    /// This dialog has known issues. See the following for details and workarounds
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
+    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
     /// 
     /// # Note
-    /// `mime_type` specify the type of the target file to be saved. 
-    /// It should be provided whenever possible. If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types.  
-    /// 
-    /// The file created this way will not be registered in the MediaStore that is used by [`AndroidFs::show_open_visual_media_dialog`] and etc.
-    /// Images and videos files can be registered in the gallery by using methods like [`PublicStorage::create_file_in_public_app_dir`] to create them.
-    /// 
-    /// By default, returned uri is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
-    /// 
-    /// Note that if the user selects a file on Google drive, this function returns None. 
-    /// This is because it is not possible to write files on Google drive using FileDescriptor.
-    /// 
+    /// If a file on GoogleDrive is selected, return None. 
+    /// This is because it is not possible to synchronise the writing.
+    ///  
     /// # Support
     /// All Android version.
+    /// 
+    /// # References
+    /// <https://developer.android.com/reference/android/content/Intent#ACTION_CREATE_DOCUMENT>
     fn show_save_file_dialog(
         &self,
-        default_file_name: impl AsRef<str>,
+        initial_location: Option<&FileUri>,
+        initial_file_name: impl AsRef<str>,
         mime_type: Option<&str>,
+        take_persistable_uri_permission: bool
     ) -> crate::Result<Option<FileUri>>;
+
+    /*
+    /// Create a prompt the user to grant your app write access for the requested media items.   
+    /// This is used to convert a **readonly** uri into a **read-write-removable** uri.  
+    /// The permissions extended by this are valid until the app is terminated.  
+    fn request_manage_file_permission(
+        &self,
+        files: &[&FileUri]
+    ) -> crate::Result<()>;
+    */
 
     /// Verify whether [`AndroidFs::show_open_visual_media_dialog`] is available on a given device.
     /// 
@@ -303,48 +360,38 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// All Android version.
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool>;
 
-    /// Please use [`PublicStorage::is_audiobooks_dir_available`] insted.
-    #[deprecated(note = "Please use PublicStorage::is_audiobooks_dir_available insted.")]
-    #[warn(deprecated)]
-    fn is_public_audiobooks_dir_available(&self) -> crate::Result<bool> {
-        self.public_storage().is_audiobooks_dir_available()
-    }
-
-    /// Please use [`PublicStorage::is_recordings_dir_available`] insted.
-    #[deprecated(note = "Please use PublicStorage::is_recordings_dir_available insted.")]
-    #[warn(deprecated)]
-    fn is_public_recordings_dir_available(&self) -> crate::Result<bool> {
-        self.public_storage().is_recordings_dir_available()
-    }
-
-    fn app_handle(&self) -> &tauri::AppHandle<R>;
-
-    /// File storage API intended for the app’s use only.
+    /// File storage intended for the app’s use only.
     fn private_storage(&self) -> &impl PrivateStorage<R>;
 
     /// File storage that is available to other applications and users.
     fn public_storage(&self) -> &impl PublicStorage<R>;
+
+    fn app_handle(&self) -> &tauri::AppHandle<R>;
 }
 
 /// File storage intended for the app’s use only.  
 pub trait PublicStorage<R: tauri::Runtime> {
 
-    /// Creates a new empty file in the specified public app directory and returns a **read-write-removable** URI.  
-    ///  
-    /// If a file with the same name already exists, a sequential number is added to the name.  
-    /// Missing subdirectories will be created recursively.  
+    /// Creates a new empty file in the specified public app directory and returns a **persistent read-write-removable** URI.  
     ///  
     /// The created file will be registered with the corresponding MediaStore as needed.  
-    /// The URI will remain valid only until the app is uninstalled.
     /// 
-    /// # Note
-    /// `mime_type`  specify the type of the file to be created. 
-    /// It should be provided whenever possible. 
-    /// If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types. 
-    /// When using [`PublicImageDir`], please do not use a `mime_type` other than image types.
-    /// This may result in an error.
-    /// Similarly, do not use non-corresponding media types for [`PublicVideoDir`] or [`PublicAudioDir`]. 
-    /// Only [`PublicGeneralPurposeDir`] allows all mime types.
+    /// # Args
+    /// - ***dir*** :  
+    /// The base directory.  
+    ///  
+    /// - ***relative_path*** :  
+    /// The file path relative to the base directory.  
+    /// If a file with the same name already exists, a sequential number will be appended to ensure uniqueness.  
+    /// Any missing subdirectories in the specified path will be created automatically.  
+    ///  
+    /// - ***mime_type*** :  
+    /// The MIME type of the file to be created.  
+    /// Specifying this is recommended whenever possible.  
+    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
+    /// When using [`PublicImageDir`], please use only image MIME types; using other types may cause errors.
+    /// Similarly, use only the corresponding media types for [`PublicVideoDir`] and [`PublicAudioDir`].
+    /// Only [`PublicGeneralPurposeDir`] supports all MIME types.
     /// 
     /// # Support
     /// Android 10 (API level 29) or higher.  
@@ -363,31 +410,40 @@ pub trait PublicStorage<R: tauri::Runtime> {
     ) -> crate::Result<FileUri> {
 
         let config = self.app_handle().config();
-        let app_name = config.product_name.as_ref().unwrap_or(&config.identifier).replace('/', " ");
+        let app_name = config.product_name.as_deref().unwrap_or("");
+        let app_name = match app_name.is_empty() {
+            true => &config.identifier,
+            false => app_name
+        };
+        let app_name = app_name.replace('/', " ");
         let relative_path = relative_path.as_ref().trim_start_matches('/');
         let relative_path_with_subdir = format!("{app_name}/{relative_path}");
 
         self.create_file_in_public_dir(dir, relative_path_with_subdir, mime_type)
     }
 
-    /// Creates a new empty file in the specified public directory and returns a **read-write-removable** URI.  
-    ///  
-    /// If a file with the same name already exists, a sequential number is added to the name.  
-    /// Missing subdirectories will be created recursively.  
+    /// Creates a new empty file in the specified public directory and returns a **persistent read-write-removable** URI.  
     ///  
     /// The created file will be registered with the corresponding MediaStore as needed.  
-    /// The uri will remain valid only until the app is uninstalled.
     /// 
-    /// # Note
-    /// Do not save files directly in the public directory. Please specify a subdirectory in the `relative_path_with_sub_dir`, such as `appName/file.txt` or `appName/2025-2-11/file.txt`. Do not use `file.txt`.
-    /// 
-    /// `mime_type`  specify the type of the file to be created. 
-    /// It should be provided whenever possible. 
-    /// If not specified, `application/octet-stream` is used, as generic, unknown, or undefined file types. 
-    /// When using [`PublicImageDir`], please do not use a `mime_type` other than image types.
-    /// This may result in an error.
-    /// Similarly, do not use non-corresponding media types for [`PublicVideoDir`] or [`PublicAudioDir`]. 
-    /// Only [`PublicGeneralPurposeDir`] allows all mime types.
+    /// # Args
+    /// - ***dir*** :  
+    /// The base directory.  
+    ///  
+    /// - ***relative_path_with_subdir*** :  
+    /// The file path relative to the base directory.  
+    /// If a file with the same name already exists, a sequential number will be appended to ensure uniqueness.  
+    /// Any missing subdirectories in the specified path will be created automatically.  
+    /// Please specify a subdirectory in this, 
+    /// such as `MyApp/file.txt` or `MyApp/2025-2-11/file.txt`. Do not use `file.txt`.
+    ///  
+    /// - ***mime_type*** :  
+    /// The MIME type of the file to be created.  
+    /// Specifying this is recommended whenever possible.  
+    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
+    /// When using [`PublicImageDir`], please use only image MIME types; using other types may cause errors.
+    /// Similarly, use only the corresponding media types for [`PublicVideoDir`] and [`PublicAudioDir`].
+    /// Only [`PublicGeneralPurposeDir`] supports all MIME types. 
     /// 
     /// # Support
     /// Android 10 (API level 29) or higher.  

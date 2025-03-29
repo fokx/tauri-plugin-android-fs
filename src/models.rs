@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// # Note
 /// For compatibility, an interconversion to [`tauri_plugin_fs::FilePath`] is implemented, such as follwing.  
 /// This is lossy and also not guaranteed to work properly with other plugins.  
-/// However, if a file uri, reading and writing files by [`tauri_plugin_fs`] etc. should work well.  
+/// However, reading and writing files by official [`tauri_plugin_fs`] etc. should work well.  
 /// ```no_run
 /// use tauri_plugin_android_fs::FileUri;
 /// use tauri_plugin_fs::FilePath;
@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 /// ```
 /// 
 /// # Typescript type
-/// You should use the following type because it might change in the future, and the inner value should not be used directly.  
+/// You should use the following type because the inner value should not be used directly.  
 /// ```typescript
 /// type FileUri = any
 /// type FileUri = string
@@ -71,17 +71,17 @@ pub enum Entry {
 
     #[non_exhaustive]
     File {
-        name: String,
         uri: FileUri,
+        name: String,
         last_modified: SystemTime,
-        byte_size: u64,
+        len: u64,
         mime_type: String,
     },
 
     #[non_exhaustive]
     Dir {
-        name: String,
         uri: FileUri,
+        name: String,
         last_modified: SystemTime,
     }
 }
@@ -145,7 +145,8 @@ pub enum FileAccessMode {
 }
 
 /// Filters for VisualMediaPicker.
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
 pub enum VisualMediaTarget {
 
     /// Allow only images to be selected.  
@@ -155,7 +156,7 @@ pub enum VisualMediaTarget {
     VideoOnly,
 
     /// Allow only images and videos to be selected.  
-    ImageAndVideo
+    ImageAndVideo,
 }
 
 /// The application specific directory.  

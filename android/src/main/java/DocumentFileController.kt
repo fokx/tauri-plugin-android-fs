@@ -141,18 +141,6 @@ class DocumentFileController(private val activity: Activity): FileController {
         }
     }
 
-    override fun takePersistableUriPermission(uri: FileUri, flag: Int) {
-        // 以下、ACTION_OPEN_DOCUMENT_TREEで直接選択されたフォルダをTopTreeと呼称する。
-        // TopTreeの子孫の権限は派生元となるTopTreeのそれと同じである。
-        // よってTopTreeの子孫の権限を永続化する際は、派生元TopTreeの権限を永続化する。
-        // 子孫のUriを永続化しても効果がないことに注意。
-
-        // docmentTopTreeUriが存在する場合はTopTree配下のファイルであると判断
-        // そうでない場合はACTION_OPEN_DOCUMENTなどで取得したファイル
-        val _uri = Uri.parse(uri.documentTopTreeUri ?: uri.uri)
-        activity.contentResolver.takePersistableUriPermission(_uri, flag)
-    }
-
 
     private fun findIdFromName(
         activity: Context,
