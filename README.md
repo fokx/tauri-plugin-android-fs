@@ -54,8 +54,10 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     
     // pick files to read
     let selected_files = api.show_open_file_dialog(
+        None, // Initial location
         &["*/*"], // Target MIME types
-        true // Allow multiple files
+        true, // Allow multiple files
+        false // Enable uri until the app is closed
     )?;
 
     if selected_files.is_empty() {
@@ -88,7 +90,10 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let api = app.android_fs();
 
     // pick folder to read and write
-    let selected_folder = api.show_open_dir_dialog()?;
+    let selected_folder = api.show_manage_dir_dialog(
+        None, // Initial location
+        false // Enable uri until the app is closed
+    )?;
 
     if let Some(dir_uri) = selected_folder {
 
@@ -99,18 +104,12 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
             Some("text/plain") // Mime type
         )?;
 
-        // write contents
-        if let Err(e) = api.write(&new_file_uri, "contents") {
-            // handle err
-            let _ = api.remove_file(&new_file_uri);
-            return Err(e)
-        }
-        
+        let new_file: std::fs::File = api.open_file(&new_file_uri, FileAccessMode::WriteTruncate)?;
 
         // peek children
         for entry in api.read_dir(&dir_uri)? {
             match entry {
-                Entry::File { name, uri, last_modified, byte_size, mime_type, .. } => {
+                Entry::File { name, uri, last_modified, len, mime_type, .. } => {
                     // handle file
                     let file: std::fs::File = api.open_file(&uri, FileAccessMode::ReadWrite)?;
                 },
@@ -135,8 +134,10 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
 
     // pick file to write (create a new empty file by user)
     let selected_file = api.show_save_file_dialog(
+        None, // Initial location
         "", // Initial file name
-        Some("image/png") // MIME type
+        Some("image/png"), // MIME type
+        false, // Enable uri until the app is closed
     )?;
 
     if let Some(uri) = selected_file {

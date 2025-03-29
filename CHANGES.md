@@ -1,3 +1,6 @@
+# Version 5.0.1
+- Update documentation.
+
 # Version 5.0.0
 - Remove deperecated items.
 - Remove `PersistableAccessMode`
