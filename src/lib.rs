@@ -133,7 +133,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// All Android version.
     fn remove_dir(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Creates a new empty file in the specified location and returns a **persistent read-write-removable** uri.  
+    /// Creates a new empty file in the specified location and returns a **read-write-removable** uri.  
+    /// The validity period of the returned uri permission depend on the base directory.   
     ///  
     /// # Args  
     /// - ***dir*** :  

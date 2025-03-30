@@ -1,3 +1,6 @@
+# Version 7.0.1
+- Update documentation.
+
 # Version 7.0.0
 - Add `AndroidFs::check_persisted_uri_permission`
 - Add `PersistableAccessMode::Read`

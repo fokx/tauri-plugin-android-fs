@@ -158,6 +158,7 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     private val mediaFileController = MediaFileController(activity)
     private val rawFileController = RawFileController()
 
+    @Suppress("NAME_SHADOWING")
     private fun getFileController(uri: FileUri): FileController {
         val documentTopTreeUri = uri.documentTopTreeUri
         val uri = Uri.parse(uri.uri)
@@ -176,6 +177,7 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
+    @Suppress("NAME_SHADOWING")
     private fun tryAsDocumentUri(uri: FileUri): Uri? {
         val documentTopTreeUri = uri.documentTopTreeUri
         val uri = Uri.parse(uri.uri)

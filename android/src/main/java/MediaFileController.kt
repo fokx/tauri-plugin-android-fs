@@ -46,6 +46,7 @@ class MediaFileController(private val activity: Activity): FileController {
         throw Error("Failed to get name from $uri")
     }
 
+    @Suppress("NAME_SHADOWING")
     override fun createFile(dirUri: FileUri, relativePath: String, mimeType: String): JSObject {
         val relativePath = relativePath.trimStart('/')
         val relativeDirPath = relativePath.substringBeforeLast("/", "")
