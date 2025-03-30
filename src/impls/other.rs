@@ -109,6 +109,10 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
     fn take_persistable_uri_permission(&self, _uri: &FileUri, _mode: PersistableAccessMode) -> crate::Result<()> {
         Err(crate::Error::NotAndroid)
     }
+
+    fn check_persisted_uri_permission(&self, _uri: &FileUri, _mode: PersistableAccessMode) -> crate::Result<bool> {
+        Err(crate::Error::NotAndroid)
+    }
     
     fn get_all_persisted_uri_permissions(&self) -> crate::Result<impl Iterator<Item = PersistedUriPermission>> {
         Err::<std::iter::Empty<_>, _>(crate::Error::NotAndroid)

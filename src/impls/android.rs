@@ -235,6 +235,18 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
             .map(|_| ())
             .map_err(Into::into)
     }
+
+    fn check_persisted_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<bool> {
+        impl_serde!(struct Req { uri: FileUri, mode: PersistableAccessMode });
+        impl_serde!(struct Res { value: bool });
+
+        let uri = uri.clone();
+
+        self.api
+            .run_mobile_plugin::<Res>("checkPersistedUriPermission", Req { uri, mode })
+            .map(|v| v.value)
+            .map_err(Into::into)
+    }
     
     fn get_all_persisted_uri_permissions(&self) -> crate::Result<impl Iterator<Item = PersistedUriPermission>> {
         impl_serde!(struct Obj { uri: FileUri, r: bool, w: bool, d: bool });

@@ -1,3 +1,12 @@
+# Version 7.0.0
+- Add `AndroidFs::check_persisted_uri_permission`
+- Add `PersistableAccessMode::Read`
+- Add `PersistableAccessMode::Write`
+- Deprecate `PersistableAccessMode::ReadOnly`
+- Deprecate `PersistableAccessMode::WriteOnly`
+- Deprecate `FileAccessMode::Write`
+- Update documentation.
+
 # Version 6.0.0
 - Add `AndroidFs::take_persistable_uri_permission`
 - Add `AndroidFs::release_persisted_uri_permission`

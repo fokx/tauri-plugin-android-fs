@@ -64,8 +64,8 @@ class ShowSaveFileDialogArgs {
 
 @InvokeArg
 enum class PersistableUriPermissionMode {
-    ReadOnly,
-    WriteOnly,
+    Read,
+    Write,
     ReadAndWrite
 }
 
@@ -136,6 +136,12 @@ class FileUri {
 
 @InvokeArg
 class TakePersistableUriPermissionArgs {
+    lateinit var uri: FileUri
+    lateinit var mode: PersistableUriPermissionMode
+}
+
+@InvokeArg
+class CheckPersistedUriPermissionArgs {
     lateinit var uri: FileUri
     lateinit var mode: PersistableUriPermissionMode
 }
@@ -313,8 +319,8 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
             }
 
             val flag = when (args.mode) {
-                PersistableUriPermissionMode.ReadOnly -> Intent.FLAG_GRANT_READ_URI_PERMISSION
-                PersistableUriPermissionMode.WriteOnly -> Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                PersistableUriPermissionMode.Read -> Intent.FLAG_GRANT_READ_URI_PERMISSION
+                PersistableUriPermissionMode.Write -> Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 PersistableUriPermissionMode.ReadAndWrite -> Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             }
 
@@ -324,6 +330,43 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
         }
         catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke takePersistableUriPermission."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun checkPersistedUriPermission(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(CheckPersistedUriPermissionArgs::class.java)
+
+            val uri = if (args.uri.documentTopTreeUri != null) {
+                Uri.parse(args.uri.documentTopTreeUri)
+            }
+            else {
+                Uri.parse(args.uri.uri)
+            }
+
+            val p = activity.contentResolver.persistedUriPermissions.find { it.uri == uri }
+            if (p != null) {
+                 val value = when (args.mode) {
+                    PersistableUriPermissionMode.Read -> p.isReadPermission
+                    PersistableUriPermissionMode.Write -> p.isWritePermission
+                    PersistableUriPermissionMode.ReadAndWrite -> p.isReadPermission && p.isWritePermission
+                }
+
+                invoke.resolve(JSObject().apply {
+                    put("value", value)
+                })
+            }
+            else {
+                invoke.resolve(JSObject().apply {
+                    put("value", false)
+                })
+            }
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke checkPersistedUriPermission."
             Logger.error(message)
             invoke.reject(message)
         }

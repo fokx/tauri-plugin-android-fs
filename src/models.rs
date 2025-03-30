@@ -90,18 +90,25 @@ pub enum Entry {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub enum PersistableAccessMode {
 
-    /// Read-only access.
-    ReadOnly,
+    /// Read access.
+    Read,
 
-    /// Write-only access.
-    WriteOnly,
+    /// Write access.
+    Write,
 
     /// Read-write access.
     ReadAndWrite,
+
+    /// Please use [`PersistableAccessMode::Read`] instead.
+    #[deprecated = "Confusing name. Please use Read instead."]
+    ReadOnly,
+
+    /// Please use [`PersistableAccessMode::Write`] instead.
+    #[deprecated = "Confusing name. Please use Write instead."]
+    WriteOnly,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
-#[non_exhaustive]
 pub enum PersistedUriPermission {
     File {
         uri: FileUri,
@@ -125,11 +132,14 @@ pub enum FileAccessMode {
     /// FileDescriptor mode: "r"
     Read,
 
-    /// Opens the file in write-only mode.
+    /// Opens the file in write-only mode.  
     /// **This may or may not truncate.**
-    /// So please use `WriteTruncate` or `WriteAppend` instead.
+    /// So please use `WriteTruncate` or `WriteAppend` instead.  
+    /// 
+    /// This is there just in case.
     ///
     /// FileDescriptor mode: "w"
+    #[deprecated = "This may or may not truncate existing contents. So please use WriteTruncate or WriteAppend instead."]
     Write,
 
     /// Opens the file in write-only mode.

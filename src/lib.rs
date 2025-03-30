@@ -286,8 +286,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
         initial_location: Option<&FileUri>,
     ) -> crate::Result<Option<FileUri>>;
 
-    /// Use [`AndroidFs::show_manage_dir_dialog`] instead.
-    #[deprecated = "Confusing name"]
+    /// Please use [`AndroidFs::show_manage_dir_dialog`] instead.
+    #[deprecated = "Confusing name. Please use show_manage_dir_dialog instead."]
     #[warn(deprecated)]
     fn show_open_dir_dialog(&self) -> crate::Result<Option<FileUri>> {
         self.show_manage_dir_dialog(None)
@@ -345,6 +345,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// Note that [there is a limit to the total number of uri that can be made persistent by this function.](https://stackoverflow.com/questions/71099575/should-i-release-persistableuripermission-when-a-new-storage-location-is-chosen/71100621#71100621)  
     /// Therefore, it is recommended to relinquish the unnecessary persisted uri by [`AndroidFs::release_persisted_uri_permission`] or [`AndroidFs::release_all_persisted_uri_permissions`].  
+    /// Persisted permissions may be relinquished by other apps, user, or by moving/removing entries.
+    /// So check by [`AndroidFs::check_persisted_uri_permission`].  
     /// And you can retrieve the list of persisted uris using [`AndroidFs::get_all_persisted_uri_permissions`].
     /// 
     /// # Args
@@ -365,6 +367,20 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// # Support
     /// All Android version. 
     fn take_persistable_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<()>;
+
+    /// Check a persisted uri permission grant by [`AndroidFs::take_persistable_uri_permission`].   
+    /// Returns false if there are only non-persistent permissions or no permissions.
+    /// 
+    /// # Args
+    /// - **uri** :  
+    /// Uri of the target file or directory.  
+    ///
+    /// - **mode** :  
+    /// The mode of permission you want to check.  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn check_persisted_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<bool>;
 
     /// Return list of all uri permission grants that have been persisted by [`AndroidFs::take_persistable_uri_permission`].   
     /// 

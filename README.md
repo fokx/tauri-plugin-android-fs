@@ -136,7 +136,7 @@ fn save_file(
 
     let api = app.android_fs();
 
-    // pick file to write (create a new empty file by user)
+    // pick file to write
     let file_uri = api.show_save_file_dialog(
         None, // Initial location
         file_name, // Initial file name
@@ -171,19 +171,31 @@ fn save_file_in_dir(
     contents: &[u8],
 ) -> tauri_plugin_android_fs::Result<bool> {
 
+    const DEST_DIR_URI_DATA_RELATIVE_PATH: &str = "01JQMFWVH65YNCWM31V3DZG6GR";
     let api = app.android_fs();
 
+    // Retrieve previously retrieved dest dir uri, if exists.
     let dest_dir_uri = api
-        .get_all_persisted_uri_permissions()?
-        .find(|e| matches!(e, PersistedUriPermission::Dir { can_write: true, .. }));
-    
+        .private_storage()
+        .read_to_string(PrivateDir::Data, DEST_DIR_URI_DATA_RELATIVE_PATH)
+        .and_then(|u| FileUri::from_str(&u));
+
+    // Check write permission, if exists.
     let dest_dir_uri = match dest_dir_uri {
-        // When dest folder was already selected
-        Some(dest_dir_uri) => {
-            let PersistedUriPermission::Dir { uri, .. } = dest_dir_uri else { unreachable!() };
-            uri
+        Ok(dest_dir_uri) => {
+            if api.check_persisted_uri_permission(&dest_dir_uri, PersistableAccessMode::Write)? {
+                Some(dest_dir_uri)
+            }
+            else {
+                None
+            }
         },
-        // When dest folder was not selected
+        Err(_) => None
+    };
+    
+    // If there is no valid dest dir, select a new one
+    let dest_dir_uri = match dest_dir_uri {
+        Some(dest_dir_uri) => dest_dir_uri,
         None => {
             // Show folder picker
             let Some(uri) = api.show_manage_dir_dialog(None)? else {
@@ -191,8 +203,18 @@ fn save_file_in_dir(
                 return Ok(false)
             };
 
+            // Store uri
+            api.private_storage().write(
+                PrivateDir::Data, 
+                DEST_DIR_URI_DATA_RELATIVE_PATH, 
+                uri.to_string()?.as_bytes()
+            )?;
+
             // Persist uri permission across app restarts
-            api.take_persistable_uri_permission(&uri, PersistableAccessMode::ReadAndWrite)?;
+            api.take_persistable_uri_permission(
+                &uri, 
+                PersistableAccessMode::ReadAndWrite
+            )?;
 
             uri
         },
