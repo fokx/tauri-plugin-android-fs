@@ -1,3 +1,15 @@
+# Version 6.0.0
+- Add `AndroidFs::take_persistable_uri_permission`
+- Add `AndroidFs::release_persisted_uri_permission`
+- Add `AndroidFs::release_all_persisted_uri_permissions`
+- Add `AndroidFs::get_all_persisted_uri_permissions`
+- Add `PersistedUriPermission`
+- Remove arg `take_persistable_uri_permission` from  
+    `AndroidFs::show_open_file_dialog`, 
+    `AndroidFs::show_open_visual_media_dialog`, 
+    `AndroidFs::show_save_file_dialog`
+- Update documentation.
+
 # Version 5.0.1
 - Update documentation.
 

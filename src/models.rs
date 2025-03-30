@@ -100,6 +100,21 @@ pub enum PersistableAccessMode {
     ReadAndWrite,
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum PersistedUriPermission {
+    File {
+        uri: FileUri,
+        can_read: bool,
+        can_write: bool,
+    },
+    Dir {
+        uri: FileUri,
+        can_read: bool,
+        can_write: bool,
+    }
+}
+
 /// Access mode
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
 #[non_exhaustive]

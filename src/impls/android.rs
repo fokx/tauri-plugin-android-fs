@@ -94,10 +94,9 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         initial_location: Option<&FileUri>,
         mime_types: &[&str],
         multiple: bool,
-        take_persistable_uri_permission: bool
     ) -> crate::Result<Vec<FileUri>> {
 		
-        impl_serde!(struct Req { mime_types: Vec<String>, multiple: bool, take_persistable_uri_permission: bool, initial_location: Option<FileUri> });
+        impl_serde!(struct Req { mime_types: Vec<String>, multiple: bool, initial_location: Option<FileUri> });
         impl_serde!(struct Res { uris: Vec<FileUri> });
     
         let initial_location = initial_location.map(Clone::clone);
@@ -105,7 +104,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
         let _guard = self.intent_lock.lock();
         self.api
-            .run_mobile_plugin::<Res>("showOpenFileDialog", Req { mime_types, multiple, take_persistable_uri_permission, initial_location })
+            .run_mobile_plugin::<Res>("showOpenFileDialog", Req { mime_types, multiple, initial_location })
             .map(|v| v.uris)
             .map_err(Into::into)
     }
@@ -114,15 +113,14 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         &self,
         target: VisualMediaTarget,
         multiple: bool,
-        take_persistable_uri_permission: bool
     ) -> crate::Result<Vec<FileUri>> {
 		
-        impl_serde!(struct Req { multiple: bool, target: VisualMediaTarget, take_persistable_uri_permission: bool });
+        impl_serde!(struct Req { multiple: bool, target: VisualMediaTarget });
         impl_serde!(struct Res { uris: Vec<FileUri> });
     
         let _guard = self.intent_lock.lock();
         self.api
-            .run_mobile_plugin::<Res>("showOpenVisualMediaDialog", Req { multiple, target, take_persistable_uri_permission })
+            .run_mobile_plugin::<Res>("showOpenVisualMediaDialog", Req { multiple, target })
             .map(|v| v.uris)
             .map_err(Into::into)
     }
@@ -132,10 +130,9 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         initial_location: Option<&FileUri>,
         initial_file_name: impl AsRef<str>,
         mime_type: Option<&str>,
-        take_persistable_uri_permission: bool
     ) -> crate::Result<Option<FileUri>> {
 
-        impl_serde!(struct Req<'a> { initial_file_name: &'a str, mime_type: &'a str, take_persistable_uri_permission: bool, initial_location: Option<FileUri> });
+        impl_serde!(struct Req<'a> { initial_file_name: &'a str, mime_type: &'a str, initial_location: Option<FileUri> });
         impl_serde!(struct Res { uri: Option<FileUri> });
 
         let initial_location = initial_location.map(Clone::clone);
@@ -144,7 +141,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
     
         let _guard = self.intent_lock.lock();
         self.api
-            .run_mobile_plugin::<Res>("showSaveFileDialog", Req { initial_file_name, mime_type, take_persistable_uri_permission, initial_location })
+            .run_mobile_plugin::<Res>("showSaveFileDialog", Req { initial_file_name, mime_type, initial_location })
             .map(|v| v.uri)
             .map_err(Into::into)
     }
@@ -152,17 +149,16 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
     fn show_manage_dir_dialog(
         &self,
         initial_location: Option<&FileUri>,
-        take_persistable_uri_permission: bool
     ) -> crate::Result<Option<FileUri>> {
         
-        impl_serde!(struct Req { take_persistable_uri_permission: bool, initial_location: Option<FileUri> });
+        impl_serde!(struct Req { initial_location: Option<FileUri> });
         impl_serde!(struct Res { uri: Option<FileUri> });
     
         let initial_location = initial_location.map(Clone::clone);
 
         let _guard = self.intent_lock.lock();
         self.api
-            .run_mobile_plugin::<Res>("showManageDirDialog", Req { take_persistable_uri_permission, initial_location })
+            .run_mobile_plugin::<Res>("showManageDirDialog", Req { initial_location })
             .map(|v| v.uri)
             .map_err(Into::into)
     }
@@ -225,6 +221,58 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
                     uri: v.uri,
                 }
             }))
+            .map_err(Into::into)
+    }
+
+    fn take_persistable_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<()> {
+        impl_serde!(struct Req { uri: FileUri, mode: PersistableAccessMode });
+        impl_serde!(struct Res;);
+
+        let uri = uri.clone();
+
+        self.api
+            .run_mobile_plugin::<Res>("takePersistableUriPermission", Req { uri, mode })
+            .map(|_| ())
+            .map_err(Into::into)
+    }
+    
+    fn get_all_persisted_uri_permissions(&self) -> crate::Result<impl Iterator<Item = PersistedUriPermission>> {
+        impl_serde!(struct Obj { uri: FileUri, r: bool, w: bool, d: bool });
+        impl_serde!(struct Res { items: Vec<Obj> });
+    
+        self.api
+            .run_mobile_plugin::<Res>("getAllPersistedUriPermissions", "")
+            .map(|v| v.items.into_iter())
+            .map(|v| v.map(|v| {
+                let uri = v.uri;
+                let can_read = v.r;
+                let can_write = v.w;
+                match v.d {
+                    true => PersistedUriPermission::Dir { uri, can_read, can_write },
+                    false => PersistedUriPermission::File { uri, can_read, can_write }
+                }
+            }))
+            .map_err(Into::into)
+    }
+    
+    fn release_persisted_uri_permission(&self, uri: &FileUri) -> crate::Result<()> {
+        impl_serde!(struct Req { uri: FileUri });
+        impl_serde!(struct Res;);
+
+        let uri = uri.clone();
+
+        self.api
+            .run_mobile_plugin::<Res>("releasePersistedUriPermission", Req { uri })
+            .map(|_| ())
+            .map_err(Into::into)
+    }
+    
+    fn release_all_persisted_uri_permissions(&self) -> crate::Result<()> {
+        impl_serde!(struct Res);
+
+        self.api
+            .run_mobile_plugin::<Res>("releaseAllPersistedUriPermissions", "")
+            .map(|_| ())
             .map_err(Into::into)
     }
 
