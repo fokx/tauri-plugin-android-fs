@@ -49,15 +49,14 @@ Opens the file/folder picker to read and write user-selected entries.
 ```rust
 use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, FileAccessMode};
 
-fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
+fn file_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let api = app.android_fs();
     
-    // pick files to read
+    // pick files to read and write
     let selected_files = api.show_open_file_dialog(
         None, // Initial location
         &["*/*"], // Target MIME types
         true, // Allow multiple files
-        false // Enable uri until the app is closed
     )?;
 
     if selected_files.is_empty() {
@@ -68,8 +67,16 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
             let file_type = api.get_mime_type(&uri)?.unwrap(); // If file, this returns no None.
             let file_name = api.get_name(&uri)?;
 
-            // Handle read-only file.
-            let file: std::fs::File = api.open_file(&uri, FileAccessMode::Read)?;
+            {
+                // Handle readonly file.
+                let file: std::fs::File = api.open_file(&uri, FileAccessMode::Read)?;
+            }
+
+            {
+                // Handle writeonly file. 
+                // Truncate existing contents.
+                let file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
+            }
 
             // Alternatively, the uri can be returned to the front end, 
             // and file processing can be handled within another tauri::command function that takes it as an argument.
@@ -84,34 +91,21 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
 }
 ```
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, Entry, FileAccessMode};
+use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, Entry};
 
-fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
+fn dir_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let api = app.android_fs();
 
     // pick folder to read and write
     let selected_folder = api.show_manage_dir_dialog(
         None, // Initial location
-        false // Enable uri until the app is closed
     )?;
 
     if let Some(dir_uri) = selected_folder {
-
-        // create a new empty file in the selected folder
-        let new_file_uri = api.create_file(
-            &dir_uri, // Parent folder
-            "MyFolder/file.txt", // Relative path
-            Some("text/plain") // Mime type
-        )?;
-
-        let new_file: std::fs::File = api.open_file(&new_file_uri, FileAccessMode::WriteTruncate)?;
-
-        // peek children
         for entry in api.read_dir(&dir_uri)? {
             match entry {
                 Entry::File { name, uri, last_modified, len, mime_type, .. } => {
                     // handle file
-                    let file: std::fs::File = api.open_file(&uri, FileAccessMode::ReadWrite)?;
                 },
                 Entry::Dir { name, uri, last_modified, .. } => {
                     // handle folder
@@ -127,31 +121,94 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
 }
 ```
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, FileAccessMode};
+use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PersistableAccessMode, PersistedUriPermission};
 
-fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
+/// Opens a dialog to save the file and write contents to the selected file.
+/// 
+/// return Ok(false) when canceled by user.  
+/// return Ok(true) when success.
+fn save_file(
+    app: tauri::AppHandle,
+    file_name: &str,
+    mime_type: &str,
+    contents: &[u8],
+) -> tauri_plugin_android_fs::Result<bool> {
+
     let api = app.android_fs();
 
     // pick file to write (create a new empty file by user)
-    let selected_file = api.show_save_file_dialog(
+    let file_uri = api.show_save_file_dialog(
         None, // Initial location
-        "", // Initial file name
-        Some("image/png"), // MIME type
-        false, // Enable uri until the app is closed
+        file_name, // Initial file name
+        Some(mime_type), // MIME type
     )?;
 
-    if let Some(uri) = selected_file {
-        // Handle write-only file
-        let mut file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
-        
-        // If you need to write file from frontend, 
-        // convert to FilePath and use tauri_plugin_fs functions such as 'write' on frontend.
-        let file_path: tauri_plugin_fs::FilePath = uri.into();
-    } 
-    else {
-        // Handle cancel
+    let Some(file_uri) = file_uri else {
+        return Ok(false)
+    };
+
+    // write contents
+    if let Err(e) = api.write(&file_uri, contents) {
+        // handle err
+        let _ = api.remove_file(&file_uri);
+        return Err(e)
     }
-    Ok(())
+    
+    Ok(true)
+}
+
+/// Open a dialog to select a directory, 
+/// and create a new file at the relative_path position from it,
+/// then write contents to it.  
+/// If a folder has been selected in the past, use it without opening a dialog.
+/// 
+/// return Ok(false) when canceled by user.  
+/// return Ok(true) when success.  
+fn save_file_in_dir(
+    app: tauri::AppHandle, 
+    relative_path: &str,
+    mime_type: &str,
+    contents: &[u8],
+) -> tauri_plugin_android_fs::Result<bool> {
+
+    let api = app.android_fs();
+
+    let dest_dir_uri = api
+        .get_all_persisted_uri_permissions()?
+        .find(|e| matches!(e, PersistedUriPermission::Dir { can_write: true, .. }));
+    
+    let dest_dir_uri = match dest_dir_uri {
+        // When dest folder was already selected
+        Some(dest_dir_uri) => {
+            let PersistedUriPermission::Dir { uri, .. } = dest_dir_uri else { unreachable!() };
+            uri
+        },
+        // When dest folder was not selected
+        None => {
+            // Show folder picker
+            let Some(uri) = api.show_manage_dir_dialog(None)? else {
+                // Canceled by user
+                return Ok(false)
+            };
+
+            // Persist uri permission across app restarts
+            api.take_persistable_uri_permission(&uri, PersistableAccessMode::ReadAndWrite)?;
+
+            uri
+        },
+    };
+    
+    // create a new empty file in dest folder
+    let new_file_uri = api.create_file(&dest_dir_uri, relative_path, Some(mime_type))?;
+
+    // write contents
+    if let Err(e) = api.write(&new_file_uri, contents) {
+        // handle err
+        let _ = api.remove_file(&new_file_uri);
+        return Err(e)
+    }
+    
+    Ok(true)
 }
 ```
 
