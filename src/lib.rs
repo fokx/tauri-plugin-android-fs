@@ -43,8 +43,12 @@ pub trait AndroidFs<R: tauri::Runtime> {
 
     /// Queries the file system to get information about a file, directory.
     /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri. This needs to be readable.
+    /// 
     /// # Note
-    /// This uses [`AndroidFs::open_file`] internally, and only for **readable** uri. 
+    /// This uses [`AndroidFs::open_file`] internally.
     /// 
     /// # Support
     /// All Android version.
@@ -63,8 +67,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// If you need to operate the file, use [`AndroidFs::open_file`] instead.  
     /// 
-    /// # Note
-    /// This is only for **readable** uri.
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri. This needs to be readable.
     /// 
     /// # Support
     /// All Android version.
@@ -83,8 +88,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// If you need to operate the file, use [`AndroidFs::open_file`] instead.  
     /// 
-    /// # Note
-    /// This is only for **readable** uri.
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri. This needs to be readable.
     /// 
     /// # Support
     /// All Android version.
@@ -104,8 +110,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// If you want to operate the file, use [`AndroidFs::open_file`] instead.  
     /// 
-    /// # Note
-    /// This is only for **writable** uri.
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri. This needs to be writable.
     /// 
     /// # Support
     /// All Android version.
@@ -117,8 +124,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
 
     /// Remove the file.
     /// 
-    /// # Note
-    /// This is only for **removable** uri.
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri. This needs to be removable.
     /// 
     /// # Support
     /// All Android version.
@@ -126,8 +134,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
 
     /// Remove the **empty** directory.
     /// 
-    /// # Note
-    /// This is only for **removable** uri.
+    /// # Args
+    /// - **uri** :  
+    /// Target directory uri. This needs to be removable.
     /// 
     /// # Support
     /// All Android version.
@@ -138,7 +147,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ///  
     /// # Args  
     /// - ***dir*** :  
-    /// The uri of the base directory.  
+    /// The uri of the base directory. 
+    /// This needs to be read-writable.
     ///  
     /// - ***relative_path*** :  
     /// The file path relative to the base directory.  
@@ -162,6 +172,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Returns the child entries of the specified directory.  
     /// Each returned entry contains a uri for either a file or a directory.  
     /// The order of the entries is not guaranteed.  
+    /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target directory uri.
+    /// This needs to be readable.
     ///  
     /// # Note  
     /// The permissions and validity period of the returned uris depend on the origin directory.  

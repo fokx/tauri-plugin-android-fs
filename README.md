@@ -180,10 +180,10 @@ fn save_file_in_dir(
         .read_to_string(PrivateDir::Data, DEST_DIR_URI_DATA_RELATIVE_PATH)
         .and_then(|u| FileUri::from_str(&u));
 
-    // Check write permission, if exists.
+    // Check permission, if exists.
     let dest_dir_uri = match dest_dir_uri {
         Ok(dest_dir_uri) => {
-            if api.check_persisted_uri_permission(&dest_dir_uri, PersistableAccessMode::Write)? {
+            if api.check_persisted_uri_permission(&dest_dir_uri, PersistableAccessMode::ReadAndWrite)? {
                 Some(dest_dir_uri)
             }
             else {
