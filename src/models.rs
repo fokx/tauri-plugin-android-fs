@@ -1,4 +1,3 @@
-use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
 
@@ -43,15 +42,27 @@ impl FileUri {
     }
 }
 
+impl From<&std::path::PathBuf> for FileUri {
+
+    fn from(value: &std::path::PathBuf) -> Self {
+        Self { uri: format!("file://{}", value.to_string_lossy()), document_top_tree_uri: None }
+    }
+}
+
+impl From<std::path::PathBuf> for FileUri {
+
+    fn from(ref value: std::path::PathBuf) -> Self {
+        value.into()
+    }
+}
+
 impl From<tauri_plugin_fs::FilePath> for FileUri {
 
     fn from(value: tauri_plugin_fs::FilePath) -> Self {
-        let uri = match value {
-            tauri_plugin_fs::FilePath::Url(url) => url.to_string(),
-            tauri_plugin_fs::FilePath::Path(path_buf) => format!("file://{}", path_buf.to_string_lossy()),
-        };
-
-        Self { uri, document_top_tree_uri: None }
+        match value {
+            tauri_plugin_fs::FilePath::Url(url) => Self { uri: url.to_string(), document_top_tree_uri: None },
+            tauri_plugin_fs::FilePath::Path(path_buf) => path_buf.into(),
+        }
     }
 }
 
@@ -73,7 +84,7 @@ pub enum Entry {
     File {
         uri: FileUri,
         name: String,
-        last_modified: SystemTime,
+        last_modified: std::time::SystemTime,
         len: u64,
         mime_type: String,
     },
@@ -82,7 +93,7 @@ pub enum Entry {
     Dir {
         uri: FileUri,
         name: String,
-        last_modified: SystemTime,
+        last_modified: std::time::SystemTime,
     }
 }
 
@@ -98,14 +109,6 @@ pub enum PersistableAccessMode {
 
     /// Read-write access.
     ReadAndWrite,
-
-    /// Please use [`PersistableAccessMode::Read`] instead.
-    #[deprecated = "Confusing name. Please use Read instead."]
-    ReadOnly,
-
-    /// Please use [`PersistableAccessMode::Write`] instead.
-    #[deprecated = "Confusing name. Please use Write instead."]
-    WriteOnly,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
@@ -119,6 +122,38 @@ pub enum PersistedUriPermission {
         uri: FileUri,
         can_read: bool,
         can_write: bool,
+    }
+}
+
+impl PersistedUriPermission {
+
+    pub fn uri(&self) -> &FileUri {
+        match self {
+            PersistedUriPermission::File { uri, .. } => uri,
+            PersistedUriPermission::Dir { uri, .. } => uri,
+        }
+    }
+
+    pub fn can_read(&self) -> bool {
+        match self {
+            PersistedUriPermission::File { can_read, .. } => *can_read,
+            PersistedUriPermission::Dir { can_read, .. } => *can_read,
+        }
+    }
+
+    pub fn can_write(&self) -> bool {
+        match self {
+            PersistedUriPermission::File { can_write, .. } => *can_write,
+            PersistedUriPermission::Dir { can_write, .. } => *can_write,
+        }
+    }
+
+    pub fn is_file(&self) -> bool {
+        matches!(self, PersistedUriPermission::File { .. })
+    }
+
+    pub fn is_dir(&self) -> bool {
+        matches!(self, PersistedUriPermission::Dir { .. })
     }
 }
 

@@ -28,6 +28,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
 
     /// Get the file or directory name.  
     /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target uri.  
+    /// This needs to be **readable**.
+    /// 
     /// # Support
     /// All Android version.
     fn get_name(&self, uri: &FileUri) -> crate::Result<String>;
@@ -37,6 +42,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// If the file, this returns no `None`.  
     /// If the file type is unknown or unset, this returns `Some("application/octet-stream")`.  
     ///
+    /// # Args
+    /// - **uri** :  
+    /// Target uri.  
+    /// This needs to be **readable**.
+    /// 
     /// # Support
     /// All Android version.
     fn get_mime_type(&self, uri: &FileUri) -> crate::Result<Option<String>>;
@@ -45,7 +55,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri. This needs to be readable.
+    /// Target uri.  
+    /// This needs to be **readable**.
     /// 
     /// # Note
     /// This uses [`AndroidFs::open_file`] internally.
@@ -59,6 +70,22 @@ pub trait AndroidFs<R: tauri::Runtime> {
 
     /// Open a file in the specified mode.
     /// 
+    /// # Note
+    /// This method uses a FileDescriptor internally. 
+    /// However, if the target file does not physically exist on the device, such as cloud-based files, 
+    /// the write operation using a FileDescriptor may not be reflected properly.
+    /// In such cases, consider using [AndroidFs::write_via_kotlin], 
+    /// which writes using a standard method that does not rely on FileDescriptor, 
+    /// or [AndroidFs::write], which automatically falls back to that approach when necessary.
+    /// If you specifically need to write using std::fs::File not entire contents, see [AndroidFs::write_via_kotlin_in] or [AndroidFs::copy_via_kotlin].  
+    /// 
+    /// It seems that the issue does not occur on all cloud storage platforms. At least, files on Google Drive have issues, 
+    /// but files on Dropbox can be written to correctly using a FileDescriptor.
+    /// If you encounter issues with cloud storage other than Google Drive, please let me know on [Github](https://github.com/aiueo13/tauri-plugin-android-fs/issues/new). 
+    /// This information will be used in [AndroidFs::need_write_via_kotlin] used by `AndroidFs::write`.  
+    /// 
+    /// There are no problems with file reading.
+    /// 
     /// # Support
     /// All Android version.
     fn open_file(&self, uri: &FileUri, mode: FileAccessMode) -> crate::Result<std::fs::File>;
@@ -69,7 +96,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri. This needs to be readable.
+    /// Target file uri.  
+    /// This needs to be **readable**.
     /// 
     /// # Support
     /// All Android version.
@@ -90,7 +118,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri. This needs to be readable.
+    /// Target file uri.  
+    /// This needs to be **readable**.
     /// 
     /// # Support
     /// All Android version.
@@ -112,21 +141,133 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri. This needs to be writable.
+    /// Target file uri.  
+    /// This needs to be **writable**.
     /// 
     /// # Support
     /// All Android version.
     fn write(&self, uri: &FileUri, contents: impl AsRef<[u8]>) -> crate::Result<()> {
+        if self.need_write_via_kotlin(uri)? {
+            self.write_via_kotlin(uri, contents)?;
+            return Ok(())
+        }
+
         let mut file = self.open_file(uri, FileAccessMode::WriteTruncate)?;
         file.write_all(contents.as_ref())?;
         Ok(())
     }
 
+    /// Writes a slice as the entire contents of a file.  
+    /// This function will entirely replace its contents if it does exist.    
+    /// 
+    /// Differences from `std::fs::File::write_all` is the process is done on Kotlin side.  
+    /// See [`AndroidFs::open_file`] for why this function exists.
+    /// 
+    /// If [`AndroidFs::write`] is used, it automatically fall back to this by [`AndroidFs::need_write_via_kotlin`], 
+    /// so there should be few opportunities to use this.
+    /// 
+    /// If you want to write using `std::fs::File`, not entire contents, use [`AndroidFs::write_via_kotlin_in`].
+    /// 
+    /// # Inner process
+    /// The contents is written to a temporary file by Rust side 
+    /// and then copied to the specified file on Kotlin side by [`AndroidFs::copy_via_kotlin`].  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn write_via_kotlin(
+        &self, 
+        uri: &FileUri,
+        contents: impl AsRef<[u8]>
+    ) -> crate::Result<()> {
+
+        self.write_via_kotlin_in(uri, |file| file.write_all(contents.as_ref()))
+    }
+
+    /// See [`AndroidFs::write_via_kotlin`] for information.  
+    /// Use this if you want to write using `std::fs::File`, not entire contents.
+    /// 
+    /// If you want to retain the file outside the closure, 
+    /// you can perform the same operation using [`AndroidFs::copy_via_kotlin`] and [`PrivateStorage`]. 
+    /// For details, please refer to the internal implementation of this function.
+    /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri to write.
+    /// 
+    /// - **contetns_writer** :  
+    /// A closure that accepts a mutable reference to a `std::fs::File`
+    /// and performs the actual write operations. Note that this represents a temporary file.
+    fn write_via_kotlin_in<T>(
+        &self, 
+        uri: &FileUri,
+        contents_writer: impl FnOnce(&mut std::fs::File) -> std::io::Result<T>
+    ) -> crate::Result<T> {
+
+        static TMP_FILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+        // 一時ファイルの排他アクセスを保証
+        let _guard = TMP_FILE_LOCK.lock();
+
+        // 一時ファイルのパスを取得
+        let tmp_file_path = self.app_handle()
+            .android_fs()
+            .private_storage()
+            .resolve_path_with(PrivateDir::Cache, "tauri-plugin-android-fs-tempfile-write-via-kotlin")?;
+
+        // 一時ファイルに内容を書き込む
+        // エラー処理は一時ファイルを削除するまで保留
+        let result = {
+            let ref mut file = std::fs::File::create(&tmp_file_path)?;
+            contents_writer(file)
+        };
+
+        // 上記処理が成功していれば、一時ファイルの内容をkotlin側で指定されたファイルにコピーする
+        // エラー処理は一時ファイルを削除するまで保留
+        let result = result
+            .map_err(crate::Error::from)
+            .and_then(|t| self.copy_via_kotlin(&(&tmp_file_path).into(), uri).map(|_| t));
+
+        // 一時ファイルを削除
+        let _ = std::fs::remove_file(&tmp_file_path);
+
+        result
+    }
+
+    /// Determines if the file needs to be written via Kotlin side instead of Rust side.  
+    /// Currently, this returns true only if the file is on GoogleDrive.  
+    /// 
+    /// # Support
+    /// All Android version.
+    fn need_write_via_kotlin(&self, uri: &FileUri) -> crate::Result<bool> {
+        Ok(uri.uri.starts_with("content://com.google.android.apps.docs.storage"))
+    }
+
+    /// Copies the contents of src file to dest. 
+    /// 
+    /// This copy process is done on Kotlin side, not on Rust.  
+    /// Large files in GB units are also supported.  
+    ///  
+    /// See [`AndroidFs::write_via_kotlin`] for why this function exists.
+    /// 
+    /// # Args
+    /// - **src** :  
+    /// The uri of source file.   
+    /// This needs to be **readable**.
+    /// 
+    /// - **dest** :  
+    /// The uri of destination file.  
+    /// This needs to be **writable**.
+    /// 
+    /// # Support
+    /// All Android version.
+    fn copy_via_kotlin(&self, src: &FileUri, dest: &FileUri) -> crate::Result<()>;
+
     /// Remove the file.
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri. This needs to be removable.
+    /// Target file uri.  
+    /// This needs to be **removable**.
     /// 
     /// # Support
     /// All Android version.
@@ -136,19 +277,22 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target directory uri. This needs to be removable.
+    /// Target directory uri.  
+    /// This needs to be **removable**.
     /// 
     /// # Support
     /// All Android version.
     fn remove_dir(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Creates a new empty file in the specified location and returns a **read-write-removable** uri.  
-    /// The validity period of the returned uri permission depend on the base directory.   
+    /// Creates a new empty file in the specified location and returns a uri.  
+    /// 
+    /// The permissions and validity period of the returned uris depend on the origin directory 
+    /// (e.g., the top directory selected by [`AndroidFs::show_open_dir_dialog`]) 
     ///  
     /// # Args  
     /// - ***dir*** :  
-    /// The uri of the base directory. 
-    /// This needs to be read-writable.
+    /// The uri of the base directory.  
+    /// This needs to be **read-writable**.
     ///  
     /// - ***relative_path*** :  
     /// The file path relative to the base directory.  
@@ -169,20 +313,19 @@ pub trait AndroidFs<R: tauri::Runtime> {
         mime_type: Option<&str>
     ) -> crate::Result<FileUri>;
 
-    /// Returns the child entries of the specified directory.  
-    /// Each returned entry contains a uri for either a file or a directory.  
+    /// Returns the child files and directories of the specified directory.  
     /// The order of the entries is not guaranteed.  
+    /// 
+    /// The permissions and validity period of the returned uris depend on the origin directory 
+    /// (e.g., the top directory selected by [`AndroidFs::show_open_dir_dialog`])  
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target directory uri.
-    /// This needs to be readable.
+    /// Target directory uri.  
+    /// This needs to be **readable**.
     ///  
     /// # Note  
-    /// The permissions and validity period of the returned uris depend on the origin directory.  
-    /// (e.g., the top directory selected by [`AndroidFs::show_open_dir_dialog`])  
-    ///  
-    /// The returned type is an iterator because of the data formatting and the file system call is not executed lazily.  
+    /// The returned type is an iterator because of the data formatting and the file system call is not executed lazily. 
     /// Thus, for directories with thousands or tens of thousands of elements, it may take several seconds.  
     /// 
     /// # Support
@@ -194,6 +337,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// By default, returned uri is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
+    ///
+    /// Removing the returned files is also supported in most cases, 
+    /// but note that files provided by third-party apps may not be removable.  
     ///  
     /// Just to read images and videos, consider using [`AndroidFs::show_open_visual_media_dialog`] instead. 
     ///  
@@ -216,7 +362,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This dialog has known issues. See the following for details and workarounds
     /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
     /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
-    ///  
+    /// 
     /// # Support
     /// All Android version.
     /// 
@@ -274,7 +420,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ) -> crate::Result<Vec<FileUri>>;
 
     /// Opens a system directory picker, allowing the creation of a new directory or the selection of an existing one, 
-    /// and returns a **read-write-removable** directory uri.  
+    /// and returns a **read-write-removable** directory uri. 
+    /// App can fully manage entries within the returned directory.  
     /// If no directory is selected or the user cancels, `None` is returned. 
     /// 
     /// By default, returned uri is valid until the app is terminated. 
@@ -316,6 +463,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// By default, returned uri is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
+    /// 
+    /// Removing and reading the returned files is also supported in most cases, 
+    /// but note that files provided by third-party apps may not be removable.  
     ///  
     /// # Args  
     /// - ***initial_location*** :  
@@ -337,10 +487,6 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
     /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
     /// 
-    /// # Note
-    /// If a file on GoogleDrive is selected, return None. 
-    /// This is because it is not possible to synchronise the writing.
-    ///  
     /// # Support
     /// All Android version.
     /// 
@@ -354,8 +500,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ) -> crate::Result<Option<FileUri>>;
 
     /// Take persistent permission to access the file, directory and its descendants.  
-    /// This is a prolongation of an already acquired permission, not the acquisition of a new one. 
-    /// It cannot change readonly to writable.  
+    /// This is a prolongation of an already acquired permission, not the acquisition of a new one.  
     /// 
     /// This works by just calling, without displaying any confirmation to the user.
     /// 
@@ -373,16 +518,12 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ///     - [`AndroidFs::show_save_file_dialog`]
     ///     - [`AndroidFs::show_manage_dir_dialog`]  
     ///     - [`AndroidFs::read_dir`] :  
-    ///         This is valid if its origin is a directory retrieved from `AndroidFs::show_manage_dir_dialog`.  
-    ///         If this, the permissions of the origin is persisted, not a entry iteself. 
-    ///         Because the permissions and validity period of the descendants depend on the origin directory.
-    /// 
-    /// - **mode** :  
-    /// The mode of permission you want to persist.
+    ///         If this, the permissions of the origin directory uri is persisted, not a entry iteself. 
+    ///         Because the permissions and validity period of the entry uris depend on the origin directory.
     /// 
     /// # Support
     /// All Android version. 
-    fn take_persistable_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<()>;
+    fn take_persistable_uri_permission(&self, uri: &FileUri) -> crate::Result<()>;
 
     /// Check a persisted uri permission grant by [`AndroidFs::take_persistable_uri_permission`].   
     /// Returns false if there are only non-persistent permissions or no permissions.
@@ -548,12 +689,13 @@ pub trait PublicStorage<R: tauri::Runtime> {
 pub trait PrivateStorage<R: tauri::Runtime> {
 
     /// Get the absolute path of the specified directory.  
-    /// Apps require no permissions to read or write to the returned path, since this path lives in their private storage.  
+    /// App can fully manage entries within this directory without any permission via std::fs.   
     ///
-    /// These files will be deleted when the app is uninstalled and may also be deleted at the user’s request. 
+    /// These files will be deleted when the app is uninstalled and may also be deleted at the user’s initialising request.  
     /// When using [`PrivateDir::Cache`], the system will automatically delete files in this directory as disk space is needed elsewhere on the device.   
     /// 
-    /// The returned path may change over time if the calling app is moved to an adopted storage device, so only relative paths should be persisted.   
+    /// The returned path may change over time if the calling app is moved to an adopted storage device, 
+    /// so only relative paths should be persisted.   
     /// 
     /// # Examples
     /// ```no_run
@@ -582,7 +724,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     fn resolve_path(&self, dir: PrivateDir) -> crate::Result<std::path::PathBuf>;
 
     /// Get the absolute path of the specified relative path and base directory.  
-    /// Apps require no extra permissions to read or write to the returned path, since this path lives in their private storage.  
+    /// App can fully manage entries of this path without any permission via std::fs.   
     ///
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
@@ -600,11 +742,11 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     }
 
     fn resolve_uri(&self, dir: PrivateDir) -> crate::Result<FileUri> {
-        Ok(FileUri::from(tauri_plugin_fs::FilePath::Path(self.resolve_path(dir)?)))
+        self.resolve_path(dir).map(Into::into)
     }
 
     fn resolve_uri_with(&self, dir: PrivateDir, relative_path: impl AsRef<str>) -> crate::Result<FileUri> {
-        Ok(FileUri::from(tauri_plugin_fs::FilePath::Path(self.resolve_path_with(dir, relative_path)?)))
+        self.resolve_path_with(dir, relative_path).map(Into::into)
     }
 
     /// Writes a slice as the entire contents of a file.  

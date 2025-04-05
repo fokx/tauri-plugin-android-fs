@@ -1,5 +1,4 @@
 use serde::{de::DeserializeOwned, Serialize, Deserialize};
-use std::time::{UNIX_EPOCH, Duration};
 use tauri::{plugin::{PluginApi, PluginHandle}, AppHandle, Runtime};
 use crate::{models::*, AndroidFs, AndroidFsExt, PrivateStorage, PublicStorage};
 
@@ -196,6 +195,19 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
             .run_mobile_plugin::<FileUri>("createFile", Req { dir, mime_type, relative_path })
             .map_err(Into::into)
     }
+
+    fn copy_via_kotlin(&self, src: &FileUri, dest: &FileUri) -> crate::Result<()> {
+        impl_serde!(struct Req { src: FileUri, dest: FileUri });
+        impl_serde!(struct Res;);
+
+        let src = src.clone();
+        let dest = dest.clone();
+
+        self.api
+            .run_mobile_plugin::<Res>("copyFile", Req { src, dest })
+            .map(|_| ())
+            .map_err(Into::into)
+    }
     
     fn read_dir(&self, uri: &FileUri) -> crate::Result<impl Iterator<Item = Entry>> {
         impl_serde!(struct Req { uri: FileUri });
@@ -210,28 +222,28 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
             .map(|v| v.map(|v| match v.mime_type {
                 Some(mime_type) => Entry::File {
                     name: v.name,
-                    last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
+                    last_modified: std::time::UNIX_EPOCH + std::time::Duration::from_millis(v.last_modified as u64),
                     len: v.byte_size as u64,
                     mime_type,
                     uri: v.uri,
                 },
                 None => Entry::Dir {
                     name: v.name,
-                    last_modified: UNIX_EPOCH + Duration::from_millis(v.last_modified as u64),
+                    last_modified: std::time::UNIX_EPOCH + std::time::Duration::from_millis(v.last_modified as u64),
                     uri: v.uri,
                 }
             }))
             .map_err(Into::into)
     }
 
-    fn take_persistable_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<()> {
-        impl_serde!(struct Req { uri: FileUri, mode: PersistableAccessMode });
+    fn take_persistable_uri_permission(&self, uri: &FileUri) -> crate::Result<()> {
+        impl_serde!(struct Req { uri: FileUri });
         impl_serde!(struct Res;);
 
         let uri = uri.clone();
 
         self.api
-            .run_mobile_plugin::<Res>("takePersistableUriPermission", Req { uri, mode })
+            .run_mobile_plugin::<Res>("takePersistableUriPermission", Req { uri })
             .map(|_| ())
             .map_err(Into::into)
     }

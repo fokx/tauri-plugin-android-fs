@@ -137,7 +137,6 @@ class FileUri {
 @InvokeArg
 class TakePersistableUriPermissionArgs {
     lateinit var uri: FileUri
-    lateinit var mode: PersistableUriPermissionMode
 }
 
 @InvokeArg
@@ -149,6 +148,12 @@ class CheckPersistedUriPermissionArgs {
 @InvokeArg
 class ReleasePersistedUriPermissionArgs {
     lateinit var uri: FileUri
+}
+
+@InvokeArg
+class CopyFileArgs {
+    lateinit var src: FileUri
+    lateinit var dest: FileUri
 }
 
 @TauriPlugin
@@ -320,13 +325,14 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
                 Uri.parse(args.uri.uri)
             }
 
-            val flag = when (args.mode) {
-                PersistableUriPermissionMode.Read -> Intent.FLAG_GRANT_READ_URI_PERMISSION
-                PersistableUriPermissionMode.Write -> Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                PersistableUriPermissionMode.ReadAndWrite -> Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            try {
+                activity.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)    
             }
-
-            activity.contentResolver.takePersistableUriPermission(uri, flag)    
+            catch (ignore: Exception) {}
+            try {
+                activity.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)    
+            }
+            catch (ignore: Exception) {}
 
             invoke.resolve()
         }
@@ -535,6 +541,47 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
+    fun copyFile(invoke: Invoke) {
+        try {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val args = invoke.parseArgs(CopyFileArgs::class.java)
+                    val inputStream = activity.contentResolver.openInputStream(Uri.parse(args.src.uri))
+                    val outputStream = activity.contentResolver.openOutputStream(Uri.parse(args.dest.uri), "wt")
+
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    inputStream.use { input ->
+                        outputStream.use { output ->
+                            while (input!!.read(buffer).also { bytesRead = it } != -1) {
+                                output!!.write(buffer, 0, bytesRead)
+                            }
+                            output!!.flush()
+                        }
+                    }
+
+                    // 必要ないかもしれないが念の為
+                    withContext(Dispatchers.Main) {
+                        invoke.resolve() 
+                    }
+                }
+                catch (ex: Exception) {
+                    withContext(Dispatchers.Main) {
+                        val message = ex.message ?: "Failed to invoke copyFile."
+                        Logger.error(message)
+                        invoke.reject(message)
+                    }
+                }
+            }
+        } 
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke copyFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
     fun showManageDirDialog(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(ShowManageDirDialogArgs::class.java)
@@ -681,9 +728,7 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
                     if (intent != null) {
                         val uri = intent.data
 
-                        // file descriptor を介して google drive 上のファイルに書き込めない(読み取りはできる)ため、nullを返す。
-                        // google drive 上のファイルに書き込みたい場合は output streamを用いる必要がある。
-                        if (uri == null || uri.authority == "com.google.android.apps.docs.storage") {
+                        if (uri == null) {
                             callResult.put("uri", null)
                         }
                         else {

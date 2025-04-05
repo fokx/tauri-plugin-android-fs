@@ -1,7 +1,7 @@
 # Overview
 
 The Android file system is strict and complex because its behavior and the available APIs vary depending on the version.
-This plugin was created to provide explicit and consistent file operations.
+This plugin was created to provide explicit and consistent file operations and detailed and clear documentation.
 No special permission or configuration is required.  
 
 # Setup
@@ -39,7 +39,7 @@ tauri-plugin-android-fs = { features = ["avoid-issue1"], .. }
 ```
 
 # Usage
-This plugin can use only from rust side.  
+Currently, this plugin only provides a Rust-side API.  
 Then, there are three main ways to manipulate files:
 
 ### 1. Dialog
@@ -74,7 +74,7 @@ fn file_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result
 
             {
                 // Handle writeonly file. 
-                // Truncate existing contents.
+                // This truncate existing contents.
                 let file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
             }
 
@@ -121,7 +121,7 @@ fn dir_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<
 }
 ```
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PersistableAccessMode, PersistedUriPermission};
+use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PersistableAccessMode, PrivateDir, PrivateStorage};
 
 /// Opens a dialog to save the file and write contents to the selected file.
 /// 
@@ -211,17 +211,18 @@ fn save_file_in_dir(
             )?;
 
             // Persist uri permission across app restarts
-            api.take_persistable_uri_permission(
-                &uri, 
-                PersistableAccessMode::ReadAndWrite
-            )?;
+            api.take_persistable_uri_permission(&uri)?;
 
             uri
         },
     };
     
     // create a new empty file in dest folder
-    let new_file_uri = api.create_file(&dest_dir_uri, relative_path, Some(mime_type))?;
+    let new_file_uri = api.create_file(
+        &dest_dir_uri, 
+        relative_path, 
+        Some(mime_type)
+    )?;
 
     // write contents
     if let Err(e) = api.write(&new_file_uri, contents) {
@@ -297,23 +298,23 @@ use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PrivateDir, PrivateStorag
 
 fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let storage = app.android_fs().private_storage();
-    let contents: Vec<u8> = todo!();
 
     // Get the absolute path.
-    // Apps require no permissions to read or write to this path.
-    let path: std::path::PathBuf = storage.resolve_path(PrivateDir::Cache)?;
+    // Apps can fully manage entries within this directory.
+    let _cache_dir_path: std::path::PathBuf = storage.resolve_path(PrivateDir::Cache)?;
+    let _data_dir_path: std::path::PathBuf = storage.resolve_path(PrivateDir::Data)?;
 
 
     // Write the contents.
-    // This is wrapper of above resolve_path and std::fs::write
+    // This is wrapper of above resolve_path and std::fs
     storage.write(
         PrivateDir::Data, // Base directory
         "config/data1", // Relative file path
-        &contents
+        &[]
     )?;
 
     // Read the contents.
-    // This is wrapper of above resolve_path and std::fs::read
+    // This is wrapper of above resolve_path and std::fs
     let contents = storage.read(
         PrivateDir::Data, // Base directory
         "config/data1" // Relative file path

@@ -20,15 +20,19 @@ impl<R: Runtime> AndroidFsImpl<R> {
 
 impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
-    fn get_name(&self, _path: &FileUri) -> crate::Result<String> {
+    fn get_name(&self, _uri: &FileUri) -> crate::Result<String> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn get_mime_type(&self, _path: &FileUri) -> crate::Result<Option<String>> {
+    fn get_mime_type(&self, _uri: &FileUri) -> crate::Result<Option<String>> {
         Err(crate::Error::NotAndroid)
     }
 
-    fn open_file(&self, _path: &FileUri, _mode: FileAccessMode) -> crate::Result<File> {
+    fn open_file(&self, _uri: &FileUri, _mode: FileAccessMode) -> crate::Result<File> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn copy_via_kotlin(&self, _src: &FileUri, _dest: &FileUri) -> crate::Result<()> {
         Err(crate::Error::NotAndroid)
     }
 
@@ -106,7 +110,7 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         &self.0
     }
     
-    fn take_persistable_uri_permission(&self, _uri: &FileUri, _mode: PersistableAccessMode) -> crate::Result<()> {
+    fn take_persistable_uri_permission(&self, _uri: &FileUri) -> crate::Result<()> {
         Err(crate::Error::NotAndroid)
     }
 

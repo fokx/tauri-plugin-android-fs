@@ -1,3 +1,11 @@
+# Version 8.0.0
+- Remove arg of mode from `AndroidFs::take_persistable_uri_permission`
+- Add `AndroidFs::copy_via_kotlin`
+- Add `AndroidFs::write_via_kotlin`
+- Add `AndroidFs::write_via_kotlin_in`
+- Add `AndroidFs::need_write_via_kotlin`
+- Update documentation.
+
 # Version 7.0.2
 - Update documentation.
 
