@@ -522,7 +522,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// - **uri** :  
     /// Target file uri to share.  
     /// This needs to be **readable**.  
-    /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_picker`] ***cannot*** be used.
+    /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_dialog`] ***cannot*** be used.
     /// 
     /// # Support
     /// All Android version.
@@ -538,7 +538,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// - **uri** :  
     /// Target file uri to view.  
     /// This needs to be **readable**.  
-    /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_picker`] ***cannot*** be used.
+    /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_dialog`] ***cannot*** be used.
     /// 
     /// # Support
     /// All Android version.
@@ -642,7 +642,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     fn app_handle(&self) -> &tauri::AppHandle<R>;
 }
 
-/// File storage intended for the app’s use only.  
+/// File storage that is available to other applications and users.
 pub trait PublicStorage<R: tauri::Runtime> {
 
     /// Creates a new empty file in the specified public app directory and returns a **persistent read-write** URI.  

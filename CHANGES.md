@@ -1,3 +1,6 @@
+# Version 8.1.1
+- Update documentation.
+
 # Version 8.1.0
 - Add `AndroidFs::show_share_file_dialog`
 - Add `AndroidFs::show_view_file_dialog`
