@@ -1,8 +1,8 @@
 # Overview
 
-The Android file system is strict and complex because its behavior and the available APIs vary depending on the version.
-This plugin was created to provide explicit and consistent file operations and detailed and clear documentation.
-No special permission or configuration is required.  
+The Android file system is strict and complex because its behavior and the available APIs vary depending on the version. This plugin was created to provide explicit and consistent file operations and detailed and clear documentation. No special permission or configuration is required.  
+
+Note that this crate aims to provide practicality through detailed and clear documentation and a wide range of options, rather than focusing on clean functions that require minimal attention. If an error or unexpected behavior occurs, please first check the documentation for the function and  functions that provided arguments. If the issue persists, it would be helpful if you could let us know on [Github](https://github.com/aiueo13/tauri-plugin-android-fs/issues/new). 
 
 # Setup
 Register this plugin with your Tauri project: 
@@ -39,7 +39,8 @@ tauri-plugin-android-fs = { features = ["avoid-issue1"], .. }
 ```
 
 # Usage
-Currently, this plugin only provides a Rust-side API.  
+Currently, this plugin only provides a Rust-side API, not a NPM library.  
+
 Then, there are three main ways to manipulate files:
 
 ### 1. Dialog
@@ -78,9 +79,6 @@ fn file_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result
                 let file: std::fs::File = api.open_file(&uri, FileAccessMode::WriteTruncate)?;
             }
 
-            // Alternatively, the uri can be returned to the front end, 
-            // and file processing can be handled within another tauri::command function that takes it as an argument.
-            //
             // If you need to use file data on frontend, 
             // consider using Tauri’s custom protocols for efficient transmission.
             // Or convert to FilePath and use tauri_plugin_fs functions such as 'read' on frontend.
@@ -121,13 +119,13 @@ fn dir_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<
 }
 ```
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PersistableAccessMode, PrivateDir, PrivateStorage};
+use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, FileUri, PersistableAccessMode, PrivateDir, PrivateStorage};
 
 /// Opens a dialog to save the file and write contents to the selected file.
 /// 
 /// return Ok(false) when canceled by user.  
 /// return Ok(true) when success.
-fn save_file(
+fn save_file_with_dialog(
     app: tauri::AppHandle,
     file_name: &str,
     mime_type: &str,
@@ -164,7 +162,7 @@ fn save_file(
 /// 
 /// return Ok(false) when canceled by user.  
 /// return Ok(true) when success.  
-fn save_file_in_dir(
+fn save_file_with_dir_dialog(
     app: tauri::AppHandle, 
     relative_path: &str,
     mime_type: &str,
@@ -178,11 +176,12 @@ fn save_file_in_dir(
     let dest_dir_uri = api
         .private_storage()
         .read_to_string(PrivateDir::Data, DEST_DIR_URI_DATA_RELATIVE_PATH)
-        .and_then(|u| FileUri::from_str(&u));
+        .and_then(|u| FileUri::from_str(&u))
+        .ok();
 
     // Check permission, if exists.
     let dest_dir_uri = match dest_dir_uri {
-        Ok(dest_dir_uri) => {
+        Some(dest_dir_uri) => {
             if api.check_persisted_uri_permission(&dest_dir_uri, PersistableAccessMode::ReadAndWrite)? {
                 Some(dest_dir_uri)
             }
@@ -190,7 +189,7 @@ fn save_file_in_dir(
                 None
             }
         },
-        Err(_) => None
+        None => None
     };
     
     // If there is no valid dest dir, select a new one

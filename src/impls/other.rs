@@ -65,6 +65,22 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
+    fn show_share_file_dialog(&self, _uri: &FileUri) -> crate::Result<()> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn show_view_file_dialog(&self, _uri: &FileUri) -> crate::Result<()> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn can_share_file(&self, _uri: &FileUri) -> crate::Result<bool> {
+        Err(crate::Error::NotAndroid)
+    }
+
+    fn can_view_file(&self, _uri: &FileUri) -> crate::Result<bool> {
+        Err(crate::Error::NotAndroid)
+    }
+
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool> {
         Err(crate::Error::NotAndroid)
     }

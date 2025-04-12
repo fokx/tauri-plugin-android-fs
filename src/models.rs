@@ -170,8 +170,6 @@ pub enum FileAccessMode {
     /// Opens the file in write-only mode.  
     /// **This may or may not truncate.**
     /// So please use `WriteTruncate` or `WriteAppend` instead.  
-    /// 
-    /// This is there just in case.
     ///
     /// FileDescriptor mode: "w"
     #[deprecated = "This may or may not truncate existing contents. So please use WriteTruncate or WriteAppend instead."]

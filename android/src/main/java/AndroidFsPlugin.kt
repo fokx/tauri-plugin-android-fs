@@ -12,6 +12,7 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.core.app.ShareCompat
 import app.tauri.Logger
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -154,6 +155,16 @@ class ReleasePersistedUriPermissionArgs {
 class CopyFileArgs {
     lateinit var src: FileUri
     lateinit var dest: FileUri
+}
+
+@InvokeArg
+class ShareFileArgs {
+    lateinit var uri: FileUri
+}
+
+@InvokeArg
+class ViewFileArgs {
+    lateinit var uri: FileUri
 }
 
 @TauriPlugin
@@ -582,6 +593,84 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
+    fun shareFile(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ShareFileArgs::class.java)
+            val intent = createShareFileIntent(
+                Uri.parse(args.uri.uri),
+                null
+            )
+
+		    activity.applicationContext.startActivity(intent)
+            invoke.resolve()
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke shareFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun canShareFile(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ShareFileArgs::class.java)
+            val intent = createShareFileIntent(
+                Uri.parse(args.uri.uri),
+                null
+            )
+
+            val res = JSObject()
+            res.put("value", intent.resolveActivity(activity.packageManager) != null)
+            invoke.resolve(res)
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke cabShareFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun viewFile(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ViewFileArgs::class.java)
+            val intent = createViewFileIntent(
+                Uri.parse(args.uri.uri),
+                null
+            ) 
+
+            activity.applicationContext.startActivity(intent)
+            invoke.resolve()
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke viewFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun canViewFile(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ViewFileArgs::class.java)
+            val intent = createViewFileIntent(
+                Uri.parse(args.uri.uri),
+                null
+            ) 
+
+            val res = JSObject()
+            res.put("value", intent.resolveActivity(activity.packageManager) != null)
+            invoke.resolve(res)
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke cabViewFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
     fun showManageDirDialog(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(ShowManageDirDialogArgs::class.java)
@@ -896,5 +985,46 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
             true -> PickMultipleVisualMedia().createIntent(activity, req)
             false -> PickVisualMedia().createIntent(activity, req)
         }
+    }
+
+    private fun createViewFileIntent(
+        uri: Uri,
+        mimeType: String?
+    ): Intent {
+
+        val baseIntent = Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, mimeType ?: activity.contentResolver.getType(uri))
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        val intent = Intent.createChooser(baseIntent, "")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            intent.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(activity.componentName))
+        }
+
+        return intent
+    }
+
+    private fun createShareFileIntent(
+        uri: Uri,
+        mimeType: String?
+    ): Intent {
+
+        val builder = ShareCompat.IntentBuilder(activity)
+            .setStream(uri)
+            .setType(mimeType ?: activity.contentResolver.getType(uri))
+
+        val intent = builder
+            .createChooserIntent()
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            intent.putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(activity.componentName))
+        }
+
+        return intent
     }
 }

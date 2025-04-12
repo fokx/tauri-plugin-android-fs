@@ -1,3 +1,10 @@
+# Version 8.1.0
+- Add `AndroidFs::show_share_file_dialog`
+- Add `AndroidFs::show_view_file_dialog`
+- Add `AndroidFs::can_share_file`
+- Add `AndroidFs::can_view_file`
+- Update documentation.
+
 # Version 8.0.0
 - Remove arg of mode from `AndroidFs::take_persistable_uri_permission`
 - Add `AndroidFs::copy_via_kotlin`

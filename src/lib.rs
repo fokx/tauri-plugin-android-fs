@@ -4,7 +4,7 @@ mod models;
 mod impls;
 mod error;
 
-use std::io::{Read, Write};
+use std::io::{Read as _, Write as _};
 
 pub use models::*;
 pub use error::{Error, Result};
@@ -30,7 +30,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target uri.  
+    /// Target URI.  
     /// This needs to be **readable**.
     /// 
     /// # Support
@@ -44,7 +44,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ///
     /// # Args
     /// - **uri** :  
-    /// Target uri.  
+    /// Target URI.  
     /// This needs to be **readable**.
     /// 
     /// # Support
@@ -55,7 +55,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target uri.  
+    /// Target URI.  
     /// This needs to be **readable**.
     /// 
     /// # Note
@@ -70,12 +70,21 @@ pub trait AndroidFs<R: tauri::Runtime> {
 
     /// Open a file in the specified mode.
     /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target file URI.  
+    /// This must have corresponding permissions (read, write, or both) for the specified **mode**.
+    /// 
+    /// - **mode** :  
+    /// Indicates how the file is opened and the permissions granted.  
+    /// Note that files provided by third-party apps may not support [`FileAccessMode::WriteAppend`]. (ex: Files on GoogleDrive)  
+    ///
     /// # Note
     /// This method uses a FileDescriptor internally. 
     /// However, if the target file does not physically exist on the device, such as cloud-based files, 
     /// the write operation using a FileDescriptor may not be reflected properly.
     /// In such cases, consider using [AndroidFs::write_via_kotlin], 
-    /// which writes using a standard method that does not rely on FileDescriptor, 
+    /// which writes using a standard method, 
     /// or [AndroidFs::write], which automatically falls back to that approach when necessary.
     /// If you specifically need to write using std::fs::File not entire contents, see [AndroidFs::write_via_kotlin_in] or [AndroidFs::copy_via_kotlin].  
     /// 
@@ -96,7 +105,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri.  
+    /// Target file URI.    
     /// This needs to be **readable**.
     /// 
     /// # Support
@@ -118,7 +127,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri.  
+    /// Target file URI.  
     /// This needs to be **readable**.
     /// 
     /// # Support
@@ -141,7 +150,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri.  
+    /// Target file URI.  
     /// This needs to be **writable**.
     /// 
     /// # Support
@@ -192,7 +201,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri to write.
+    /// Target file URI to write.
     /// 
     /// - **contetns_writer** :  
     /// A closure that accepts a mutable reference to a `std::fs::File`
@@ -251,11 +260,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **src** :  
-    /// The uri of source file.   
+    /// The URI of source file.   
     /// This needs to be **readable**.
     /// 
     /// - **dest** :  
-    /// The uri of destination file.  
+    /// The URI of destination file.  
     /// This needs to be **writable**.
     /// 
     /// # Support
@@ -266,8 +275,10 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target file uri.  
-    /// This needs to be **removable**.
+    /// Target file URI.  
+    /// This needs to be **writable**, at least. But even if it is, 
+    /// removing may not be possible in some cases. 
+    /// For details, refer to the documentation of the function that provided the URI.
     /// 
     /// # Support
     /// All Android version.
@@ -277,22 +288,22 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target directory uri.  
-    /// This needs to be **removable**.
+    /// Target directory URI.  
+    /// This needs to be **writable**.
     /// 
     /// # Support
     /// All Android version.
     fn remove_dir(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Creates a new empty file in the specified location and returns a uri.  
+    /// Creates a new empty file in the specified location and returns a URI.  
     /// 
-    /// The permissions and validity period of the returned uris depend on the origin directory 
+    /// The permissions and validity period of the returned URIs depend on the origin directory 
     /// (e.g., the top directory selected by [`AndroidFs::show_open_dir_dialog`]) 
     ///  
     /// # Args  
     /// - ***dir*** :  
-    /// The uri of the base directory.  
-    /// This needs to be **read-writable**.
+    /// The URI of the base directory.  
+    /// This needs to be **read-write**.
     ///  
     /// - ***relative_path*** :  
     /// The file path relative to the base directory.  
@@ -316,12 +327,12 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Returns the child files and directories of the specified directory.  
     /// The order of the entries is not guaranteed.  
     /// 
-    /// The permissions and validity period of the returned uris depend on the origin directory 
+    /// The permissions and validity period of the returned URIs depend on the origin directory 
     /// (e.g., the top directory selected by [`AndroidFs::show_open_dir_dialog`])  
     /// 
     /// # Args
     /// - **uri** :  
-    /// Target directory uri.  
+    /// Target directory URI.  
     /// This needs to be **readable**.
     ///  
     /// # Note  
@@ -332,10 +343,13 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// All Android version.
     fn read_dir(&self, uri: &FileUri) -> crate::Result<impl Iterator<Item = Entry>>;
 
-    /// Opens a system file picker and returns a **read-writable** uris.  
+    /// Opens a system file picker and returns a **read-write** URIs.  
     /// If no file is selected or the user cancels, an empty vec is returned.  
     /// 
-    /// By default, returned uri is valid until the app is terminated. 
+    /// This provides a relatively consistent interface regardless of version or device, 
+    /// and also allows file selection from third-party apps or cloud storage.
+    /// 
+    /// By default, returned URI is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     ///
     /// Removing the returned files is also supported in most cases, 
@@ -375,13 +389,13 @@ pub trait AndroidFs<R: tauri::Runtime> {
         multiple: bool,
     ) -> crate::Result<Vec<FileUri>>;
 
-    /// Opens a media picker and returns a **readonly** uris.  
+    /// Opens a media picker and returns a **readonly** URIs.  
     /// If no file is selected or the user cancels, an empty vec is returned.  
     ///  
     /// This media picker provides a browsable interface that presents the user with their media library, 
     /// sorted by date from newest to oldest. 
     /// 
-    /// By default, returned uri is valid until the app is terminated. 
+    /// By default, returned URI is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     ///  
     /// # Args  
@@ -420,11 +434,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ) -> crate::Result<Vec<FileUri>>;
 
     /// Opens a system directory picker, allowing the creation of a new directory or the selection of an existing one, 
-    /// and returns a **read-write-removable** directory uri. 
+    /// and returns a **read-write** directory URI. 
     /// App can fully manage entries within the returned directory.  
     /// If no directory is selected or the user cancels, `None` is returned. 
     /// 
-    /// By default, returned uri is valid until the app is terminated. 
+    /// By default, returned URI is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     /// 
     /// # Args  
@@ -456,16 +470,16 @@ pub trait AndroidFs<R: tauri::Runtime> {
         self.show_manage_dir_dialog(None)
     }
 
-    /// Opens a dialog to save a file and returns a **writeonly** uri.  
+    /// Opens a dialog to save a file and returns a **writeonly** URI.  
     /// The returned file may be a newly created file with no content,
     /// or it may be an existing file with the requested MIME type.  
     /// If the user cancels, `None` is returned. 
     /// 
-    /// By default, returned uri is valid until the app is terminated. 
+    /// By default, returned URI is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     /// 
     /// Removing and reading the returned files is also supported in most cases, 
-    /// but note that files provided by third-party apps may not be removable.  
+    /// but note that files provided by third-party apps may not.  
     ///  
     /// # Args  
     /// - ***initial_location*** :  
@@ -499,38 +513,90 @@ pub trait AndroidFs<R: tauri::Runtime> {
         mime_type: Option<&str>,
     ) -> crate::Result<Option<FileUri>>;
 
+    /// Opens a dialog for sharing file to other apps.  
+    /// 
+    /// An error will occur if there is no app that can handle the request. 
+    /// Please use [`AndroidFs::can_share_file`] to confirm.
+    /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri to share.  
+    /// This needs to be **readable**.  
+    /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_picker`] ***cannot*** be used.
+    /// 
+    /// # Support
+    /// All Android version.
+    fn show_share_file_dialog(&self, uri: &FileUri) -> crate::Result<()>;
+
+    /// Opens a dialog for viewing file on other apps.  
+    /// This performs the general "open file" action.
+    /// 
+    /// An error will occur if there is no app that can handle the request. 
+    /// Please use [`AndroidFs::can_view_file`] to confirm.
+    /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri to view.  
+    /// This needs to be **readable**.  
+    /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_picker`] ***cannot*** be used.
+    /// 
+    /// # Support
+    /// All Android version.
+    fn show_view_file_dialog(&self, uri: &FileUri) -> crate::Result<()>;
+
+    /// Determines whether the specified file can be used with [`AndroidFs::show_share_file_dialog`].
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri.  
+    /// This needs to be **readable**.
+    /// 
+    /// # Support
+    /// All Android version.
+    fn can_share_file(&self, uri: &FileUri) -> crate::Result<bool>;
+
+    /// Determines whether the specified file can be used with [`AndroidFs::show_view_file_dialog`].
+    /// 
+    /// # Args
+    /// - **uri** :  
+    /// Target file uri.  
+    /// This needs to be **readable**.
+    /// 
+    /// # Support
+    /// All Android version.
+    fn can_view_file(&self, uri: &FileUri) -> crate::Result<bool>;
+
     /// Take persistent permission to access the file, directory and its descendants.  
     /// This is a prolongation of an already acquired permission, not the acquisition of a new one.  
     /// 
     /// This works by just calling, without displaying any confirmation to the user.
     /// 
-    /// Note that [there is a limit to the total number of uri that can be made persistent by this function.](https://stackoverflow.com/questions/71099575/should-i-release-persistableuripermission-when-a-new-storage-location-is-chosen/71100621#71100621)  
-    /// Therefore, it is recommended to relinquish the unnecessary persisted uri by [`AndroidFs::release_persisted_uri_permission`] or [`AndroidFs::release_all_persisted_uri_permissions`].  
+    /// Note that [there is a limit to the total number of URI that can be made persistent by this function.](https://stackoverflow.com/questions/71099575/should-i-release-persistableuripermission-when-a-new-storage-location-is-chosen/71100621#71100621)  
+    /// Therefore, it is recommended to relinquish the unnecessary persisted URI by [`AndroidFs::release_persisted_uri_permission`] or [`AndroidFs::release_all_persisted_uri_permissions`].  
     /// Persisted permissions may be relinquished by other apps, user, or by moving/removing entries.
     /// So check by [`AndroidFs::check_persisted_uri_permission`].  
     /// And you can retrieve the list of persisted uris using [`AndroidFs::get_all_persisted_uri_permissions`].
     /// 
     /// # Args
     /// - **uri** :  
-    /// Uri of the target file or directory. This must be a uri taken from following :  
+    /// URI of the target file or directory. This must be a URI taken from following :  
     ///     - [`AndroidFs::show_open_file_dialog`]
     ///     - [`AndroidFs::show_open_visual_media_dialog`]
     ///     - [`AndroidFs::show_save_file_dialog`]
     ///     - [`AndroidFs::show_manage_dir_dialog`]  
     ///     - [`AndroidFs::read_dir`] :  
-    ///         If this, the permissions of the origin directory uri is persisted, not a entry iteself. 
-    ///         Because the permissions and validity period of the entry uris depend on the origin directory.
+    ///         If this, the permissions of the origin directory URI is persisted, not a entry iteself. 
+    ///         Because the permissions and validity period of the entry URIs depend on the origin directory.
     /// 
     /// # Support
     /// All Android version. 
     fn take_persistable_uri_permission(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Check a persisted uri permission grant by [`AndroidFs::take_persistable_uri_permission`].   
+    /// Check a persisted URI permission grant by [`AndroidFs::take_persistable_uri_permission`].   
     /// Returns false if there are only non-persistent permissions or no permissions.
     /// 
     /// # Args
     /// - **uri** :  
-    /// Uri of the target file or directory.  
+    /// URI of the target file or directory.  
     ///
     /// - **mode** :  
     /// The mode of permission you want to check.  
@@ -539,17 +605,17 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// All Android version.
     fn check_persisted_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<bool>;
 
-    /// Return list of all uri permission grants that have been persisted by [`AndroidFs::take_persistable_uri_permission`].   
+    /// Return list of all URI permission grants that have been persisted by [`AndroidFs::take_persistable_uri_permission`].   
     /// 
     /// # Support
     /// All Android version.
     fn get_all_persisted_uri_permissions(&self) -> crate::Result<impl Iterator<Item = PersistedUriPermission>>;
 
-    /// Relinquish a persisted uri permission grant by [`AndroidFs::take_persistable_uri_permission`].   
+    /// Relinquish a persisted URI permission grant by [`AndroidFs::take_persistable_uri_permission`].   
     /// 
     /// # Args
     /// - **uri** :  
-    /// Uri of the target file or directory.  
+    /// URI of the target file or directory.  
     ///
     /// # Support
     /// All Android version.
@@ -579,9 +645,12 @@ pub trait AndroidFs<R: tauri::Runtime> {
 /// File storage intended for the app’s use only.  
 pub trait PublicStorage<R: tauri::Runtime> {
 
-    /// Creates a new empty file in the specified public app directory and returns a **persistent read-write-removable** URI.  
+    /// Creates a new empty file in the specified public app directory and returns a **persistent read-write** URI.  
     ///  
-    /// The created file will be registered with the corresponding MediaStore as needed.  
+    /// The created file has following features :   
+    /// - Will be registered with the corresponding MediaStore as needed.  
+    /// - Always supports remove.
+    /// - Not removed when the app is uninstalled.
     /// 
     /// # Args
     /// - ***dir*** :  
@@ -629,9 +698,12 @@ pub trait PublicStorage<R: tauri::Runtime> {
         self.create_file_in_public_dir(dir, relative_path_with_subdir, mime_type)
     }
 
-    /// Creates a new empty file in the specified public directory and returns a **persistent read-write-removable** URI.  
+    /// Creates a new empty file in the specified public directory and returns a **persistent read-write** URI.  
     ///  
-    /// The created file will be registered with the corresponding MediaStore as needed.  
+    /// The created file has following features :   
+    /// - Will be registered with the corresponding MediaStore as needed.  
+    /// - Always supports remove.
+    /// - Not removed when the app is uninstalled.
     /// 
     /// # Args
     /// - ***dir*** :  
