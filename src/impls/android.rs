@@ -139,15 +139,12 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
 
         impl_se!(struct Req<'a> {
             initial_file_name: &'a str, 
-            mime_type: &'a str, 
+            mime_type: Option<&'a str>, 
             initial_location: Option<&'a FileUri> 
         });
         impl_de!(struct Res { uri: Option<FileUri> });
 
         let initial_file_name = initial_file_name.as_ref();
-        let mime_type = mime_type.as_ref()
-            .map(AsRef::as_ref)
-            .unwrap_or("application/octet-stream");
     
         let _guard = self.intent_lock.lock();
         self.api
@@ -232,10 +229,9 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         mime_type: Option<&str>
     ) -> crate::Result<FileUri> {
 
-        impl_se!(struct Req<'a> { dir: &'a FileUri, mime_type: &'a str, relative_path: &'a str });
+        impl_se!(struct Req<'a> { dir: &'a FileUri, mime_type: Option<&'a str>, relative_path: &'a str });
         
         let relative_path = relative_path.as_ref();
-        let mime_type = mime_type.unwrap_or("application/octet-stream");
 
         self.api
             .run_mobile_plugin::<FileUri>("createFile", Req { dir, mime_type, relative_path })
@@ -370,11 +366,11 @@ impl<R: Runtime> PublicStorage<R> for AndroidFsImpl<R> {
         impl_de!(struct Res { name: String, uri: String });
 
         let dir = dir.into();
-        let (_, dir_type) = match dir {
-            PublicDir::Image(_) => (mime_type.unwrap_or("image/*"), "Image"),
-            PublicDir::Video(_) => (mime_type.unwrap_or("video/*"), "Video"),
-            PublicDir::Audio(_) => (mime_type.unwrap_or("audio/*"), "Audio"),
-            PublicDir::GeneralPurpose(_) => (mime_type.unwrap_or("application/octet-stream"), "GeneralPurpose"),
+        let dir_type = match dir {
+            PublicDir::Image(_) => "Image",
+            PublicDir::Video(_) => "Video",
+            PublicDir::Audio(_) => "Audio",
+            PublicDir::GeneralPurpose(_) => "GeneralPurpose",
         };
 
         let (dir_name, dir_parent_uri) = self.api

@@ -1,3 +1,7 @@
+# Version 8.2.0
+- Change behaviour when `None` is specified for mime_type, of `AndroidFs::create_file`, `AndroidFs::show_save_file_dialog` `PublicStorage::create_file_in_public_dir`, and `PublicStorage::create_file_in_public_app_dir`.
+- Update documentation.
+
 # Version 8.1.1
 - Update documentation.
 

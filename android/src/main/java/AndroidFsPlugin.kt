@@ -13,6 +13,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.core.app.ShareCompat
+import android.webkit.MimeTypeMap
 import app.tauri.Logger
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -60,7 +61,7 @@ class ShowManageDirDialogArgs {
 class ShowSaveFileDialogArgs {
     var initialLocation: FileUri? = null
     lateinit var initialFileName: String
-    lateinit var mimeType: String
+    var mimeType: String? = null
 }
 
 @InvokeArg
@@ -126,7 +127,7 @@ class ReadDirArgs {
 class CreateFileInDirArgs {
     lateinit var dir: FileUri
     lateinit var relativePath: String
-    lateinit var mimeType: String
+    var mimeType: String? = null
 }
 
 @InvokeArg
@@ -191,6 +192,19 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
             }
             else -> throw Error("Unsupported uri: $uri")
         }
+    }
+
+    private fun getMimeTypeFromName(fileName: String): String {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+
+        if (ext.isEmpty()) {
+            return "application/octet-stream"
+        }
+
+        return MimeTypeMap
+            .getSingleton()
+            .getMimeTypeFromExtension(ext)
+            ?: "application/octet-stream"
     }
 
     @Suppress("NAME_SHADOWING")
@@ -470,8 +484,10 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                   val res = getFileController(args.dir)
-                        .createFile(args.dir, args.relativePath, args.mimeType)
+                    val fileName = args.relativePath.substringAfterLast('/', args.relativePath)
+                    val mimeType = args.mimeType ?: getMimeTypeFromName(fileName)
+                    val res = getFileController(args.dir)
+                        .createFile(args.dir, args.relativePath, mimeType)
 
                     // 必要ないかもしれないが念の為
                     withContext(Dispatchers.Main) {
@@ -789,7 +805,7 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
 
             val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
 
-            intent.setType(args.mimeType)
+            intent.setType(args.mimeType ?: getMimeTypeFromName(args.initialFileName))
             intent.addCategory(Intent.CATEGORY_OPENABLE)
             intent.putExtra(Intent.EXTRA_TITLE, args.initialFileName)
             

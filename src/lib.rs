@@ -29,7 +29,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Get the file or directory name.  
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target URI.  
     /// This needs to be **readable**.
     /// 
@@ -43,7 +43,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// If the file type is unknown or unset, this returns `Some("application/octet-stream")`.  
     ///
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target URI.  
     /// This needs to be **readable**.
     /// 
@@ -54,7 +54,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Queries the file system to get information about a file, directory.
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target URI.  
     /// This needs to be **readable**.
     /// 
@@ -71,11 +71,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Open a file in the specified mode.
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target file URI.  
     /// This must have corresponding permissions (read, write, or both) for the specified **mode**.
     /// 
-    /// - **mode** :  
+    /// - ***mode*** :  
     /// Indicates how the file is opened and the permissions granted.  
     /// Note that files provided by third-party apps may not support [`FileAccessMode::WriteAppend`]. (ex: Files on GoogleDrive)  
     ///
@@ -104,7 +104,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// If you need to operate the file, use [`AndroidFs::open_file`] instead.  
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target file URI.    
     /// This needs to be **readable**.
     /// 
@@ -126,7 +126,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// If you need to operate the file, use [`AndroidFs::open_file`] instead.  
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target file URI.  
     /// This needs to be **readable**.
     /// 
@@ -149,7 +149,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// If you want to operate the file, use [`AndroidFs::open_file`] instead.  
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target file URI.  
     /// This needs to be **writable**.
     /// 
@@ -200,7 +200,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// For details, please refer to the internal implementation of this function.
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target file URI to write.
     /// 
     /// - **contetns_writer** :  
@@ -259,11 +259,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// See [`AndroidFs::write_via_kotlin`] for why this function exists.
     /// 
     /// # Args
-    /// - **src** :  
+    /// - ***src*** :  
     /// The URI of source file.   
     /// This needs to be **readable**.
     /// 
-    /// - **dest** :  
+    /// - ***dest*** :  
     /// The URI of destination file.  
     /// This needs to be **writable**.
     /// 
@@ -274,7 +274,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Remove the file.
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target file URI.  
     /// This needs to be **writable**, at least. But even if it is, 
     /// removing may not be possible in some cases. 
@@ -287,7 +287,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Remove the **empty** directory.
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target directory URI.  
     /// This needs to be **writable**.
     /// 
@@ -312,8 +312,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ///  
     /// - ***mime_type*** :  
     /// The MIME type of the file to be created.  
-    /// Specifying this is recommended whenever possible.  
-    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
+    /// If this is None, MIME type is inferred from the extension 
+    /// and if that fails, `application/octet-stream` is used.  
     ///  
     /// # Support
     /// All Android version.
@@ -493,8 +493,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// - ***mime_type*** :  
     /// The MIME type of the file to be saved.  
-    /// Specifying this is recommended whenever possible.  
-    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
+    /// If this is None, MIME type is inferred from the extension 
+    /// and if that fails, `application/octet-stream` is used.  
     ///  
     /// # Issue
     /// This dialog has known issues. See the following for details and workarounds
@@ -614,7 +614,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Relinquish a persisted URI permission grant by [`AndroidFs::take_persistable_uri_permission`].   
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// URI of the target file or directory.  
     ///
     /// # Support
@@ -645,39 +645,16 @@ pub trait AndroidFs<R: tauri::Runtime> {
 /// File storage that is available to other applications and users.
 pub trait PublicStorage<R: tauri::Runtime> {
 
-    /// Creates a new empty file in the specified public app directory and returns a **persistent read-write** URI.  
-    ///  
-    /// The created file has following features :   
-    /// - Will be registered with the corresponding MediaStore as needed.  
-    /// - Always supports remove.
-    /// - Not removed when the app is uninstalled.
+    /// See [`PublicStorage::create_file_in_public_dir`] for description.  
     /// 
-    /// # Args
-    /// - ***dir*** :  
-    /// The base directory.  
-    ///  
-    /// - ***relative_path*** :  
-    /// The file path relative to the base directory.  
-    /// If a file with the same name already exists, a sequential number will be appended to ensure uniqueness.  
-    /// Any missing subdirectories in the specified path will be created automatically.  
-    ///  
-    /// - ***mime_type*** :  
-    /// The MIME type of the file to be created.  
-    /// Specifying this is recommended whenever possible.  
-    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
-    /// When using [`PublicImageDir`], please use only image MIME types; using other types may cause errors.
-    /// Similarly, use only the corresponding media types for [`PublicVideoDir`] and [`PublicAudioDir`].
-    /// Only [`PublicGeneralPurposeDir`] supports all MIME types.
-    /// 
-    /// # Support
-    /// Android 10 (API level 29) or higher.  
-    /// Lower are need runtime request of `WRITE_EXTERNAL_STORAGE`. (This option will be made available in the future)
-    ///
-    /// [`PublicAudioDir::Audiobooks`] is not available on Android 9 (API level 28) and lower.
-    /// Availability on a given device can be verified by calling [`PublicStorage::is_audiobooks_dir_available`].  
-    /// [`PublicAudioDir::Recordings`] is not available on Android 11 (API level 30) and lower.
-    /// Availability on a given device can be verified by calling [`PublicStorage::is_recordings_dir_available`].  
-    /// Others are available in all Android versions.
+    /// This is the same as following: 
+    /// ``````ignore
+    /// create_file_in_public_dir(
+    ///     dir,
+    ///     format!("{app_name}/{relative_path}"),
+    ///     mime_type
+    /// );
+    /// ``````
     fn create_file_in_public_app_dir(
         &self,
         dir: impl Into<PublicDir>,
@@ -715,13 +692,13 @@ pub trait PublicStorage<R: tauri::Runtime> {
     /// Any missing subdirectories in the specified path will be created automatically.  
     /// Please specify a subdirectory in this, 
     /// such as `MyApp/file.txt` or `MyApp/2025-2-11/file.txt`. Do not use `file.txt`.  
-    /// It is customary to specify the app name at the beginning of the subdirectory, 
+    /// As shown above, it is customary to specify the app name at the beginning of the subdirectory, 
     /// and in this case, using [`PublicStorage::create_file_in_public_app_dir`] is recommended.
     ///  
     /// - ***mime_type*** :  
     /// The MIME type of the file to be created.  
-    /// Specifying this is recommended whenever possible.  
-    /// If not provided, `application/octet-stream` will be used, as generic, unknown, or undefined file types.  
+    /// If this is None, MIME type is inferred from the extension 
+    /// and if that fails, `application/octet-stream` is used.  
     /// When using [`PublicImageDir`], please use only image MIME types; using other types may cause errors.
     /// Similarly, use only the corresponding media types for [`PublicVideoDir`] and [`PublicAudioDir`].
     /// Only [`PublicGeneralPurposeDir`] supports all MIME types. 
