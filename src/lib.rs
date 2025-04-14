@@ -312,7 +312,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ///  
     /// - ***mime_type*** :  
     /// The MIME type of the file to be created.  
-    /// If this is None, MIME type is inferred from the extension 
+    /// If this is None, MIME type is inferred from the extension of ***relative_path***
     /// and if that fails, `application/octet-stream` is used.  
     ///  
     /// # Support
@@ -493,7 +493,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// - ***mime_type*** :  
     /// The MIME type of the file to be saved.  
-    /// If this is None, MIME type is inferred from the extension 
+    /// If this is None, MIME type is inferred from the extension of ***initial_file_name*** (not file name by user input)
     /// and if that fails, `application/octet-stream` is used.  
     ///  
     /// # Issue
@@ -697,7 +697,7 @@ pub trait PublicStorage<R: tauri::Runtime> {
     ///  
     /// - ***mime_type*** :  
     /// The MIME type of the file to be created.  
-    /// If this is None, MIME type is inferred from the extension 
+    /// If this is None, MIME type is inferred from the extension of ***relative_path_with_subdir***
     /// and if that fails, `application/octet-stream` is used.  
     /// When using [`PublicImageDir`], please use only image MIME types; using other types may cause errors.
     /// Similarly, use only the corresponding media types for [`PublicVideoDir`] and [`PublicAudioDir`].
