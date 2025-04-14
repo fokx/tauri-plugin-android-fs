@@ -331,7 +331,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// (e.g., the top directory selected by [`AndroidFs::show_open_dir_dialog`])  
     /// 
     /// # Args
-    /// - **uri** :  
+    /// - ***uri*** :  
     /// Target directory URI.  
     /// This needs to be **readable**.
     ///  
