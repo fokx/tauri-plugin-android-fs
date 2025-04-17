@@ -47,6 +47,12 @@ class ShowOpenFileDialogArgs {
 }
 
 @InvokeArg
+class ShowOpenContentDialogArgs {
+    lateinit var mimeTypes: Array<String>
+    var multiple: Boolean = false
+}
+
+@InvokeArg
 class ShowOpenVisualMediaDialogArgs {
     lateinit var target: VisualMediaPickerType
     var multiple: Boolean = false
@@ -785,6 +791,20 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
+    fun showOpenContentDialog(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ShowOpenContentDialogArgs::class.java)
+            var intent = createContentPickerIntent(args.mimeTypes, args.multiple)
+
+            startActivityForResult(invoke, intent, "handleShowOpenFileAndVisualMediaDialog")
+        } catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke showOpenContentDialog."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
     fun showOpenVisualMediaDialog(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(ShowOpenVisualMediaDialogArgs::class.java)
@@ -982,6 +1002,30 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
         }
 
         return intent.setType("*/*").putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+    }
+
+    private fun createContentPickerIntent(mimeTypes: Array<String>, multiple: Boolean): Intent {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple)
+
+        if (mimeTypes.isEmpty()) {
+            intent.setType("*/*")
+        } 
+        else if (mimeTypes.size == 1) {
+            intent.setType(mimeTypes[0])
+        }
+        else {
+            intent.setType("*/*")
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+        }
+
+        if (intent.resolveActivity(activity.packageManager) != null) {
+            return Intent.createChooser(intent, "")
+        }
+        else {
+            return createFilePickerIntent(mimeTypes, multiple)
+        }
     }
 
     private fun createVisualMediaPickerIntent(

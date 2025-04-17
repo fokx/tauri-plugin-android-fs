@@ -114,6 +114,22 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
             .map_err(Into::into)
     }
 
+    fn show_open_content_dialog(
+        &self,
+        mime_types: &[&str],
+        multiple: bool
+    ) -> crate::Result<Vec<FileUri>> {
+        
+        impl_se!(struct Req<'a> { mime_types: &'a [&'a str], multiple: bool });
+        impl_de!(struct Res { uris: Vec<FileUri> });
+
+        let _guard = self.intent_lock.lock();
+        self.api
+            .run_mobile_plugin::<Res>("showOpenContentDialog", Req { mime_types, multiple })
+            .map(|v| v.uris)
+            .map_err(Into::into)
+    }
+
     fn show_open_visual_media_dialog(
         &self,
         target: VisualMediaTarget,

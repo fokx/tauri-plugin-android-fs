@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 /// Path to represent a file or directory.
 /// 
 /// # Note
@@ -172,7 +171,7 @@ pub enum FileAccessMode {
     /// So please use `WriteTruncate` or `WriteAppend` instead.  
     ///
     /// FileDescriptor mode: "w"
-    #[deprecated = "This may or may not truncate existing contents. So please use WriteTruncate or WriteAppend instead."]
+    #[deprecated(note = "This may or may not truncate existing contents. So please use WriteTruncate or WriteAppend instead.")]
     Write,
 
     /// Opens the file in write-only mode.

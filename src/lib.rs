@@ -34,7 +34,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **readable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn get_name(&self, uri: &FileUri) -> crate::Result<String>;
 
     /// Query the provider to get mime type.  
@@ -48,7 +48,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **readable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn get_mime_type(&self, uri: &FileUri) -> crate::Result<Option<String>>;
 
     /// Queries the file system to get information about a file, directory.
@@ -62,7 +62,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This uses [`AndroidFs::open_file`] internally.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn get_metadata(&self, uri: &FileUri) -> crate::Result<std::fs::Metadata> {
         let file = self.open_file(uri, FileAccessMode::Read)?;
         Ok(file.metadata()?)
@@ -96,7 +96,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// There are no problems with file reading.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn open_file(&self, uri: &FileUri, mode: FileAccessMode) -> crate::Result<std::fs::File>;
 
     /// Reads the entire contents of a file into a bytes vector.  
@@ -109,7 +109,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **readable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn read(&self, uri: &FileUri) -> crate::Result<Vec<u8>> {
         let mut file = self.open_file(uri, FileAccessMode::Read)?;
         let mut buf = file.metadata().ok()
@@ -131,7 +131,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **readable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn read_to_string(&self, uri: &FileUri) -> crate::Result<String> {
         let mut file = self.open_file(uri, FileAccessMode::Read)?;
         let mut buf = file.metadata().ok()
@@ -154,7 +154,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **writable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn write(&self, uri: &FileUri, contents: impl AsRef<[u8]>) -> crate::Result<()> {
         if self.need_write_via_kotlin(uri)? {
             self.write_via_kotlin(uri, contents)?;
@@ -182,7 +182,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// and then copied to the specified file on Kotlin side by [`AndroidFs::copy_via_kotlin`].  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn write_via_kotlin(
         &self, 
         uri: &FileUri,
@@ -246,7 +246,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Currently, this returns true only if the file is on GoogleDrive.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn need_write_via_kotlin(&self, uri: &FileUri) -> crate::Result<bool> {
         Ok(uri.uri.starts_with("content://com.google.android.apps.docs.storage"))
     }
@@ -268,7 +268,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **writable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn copy_via_kotlin(&self, src: &FileUri, dest: &FileUri) -> crate::Result<()>;
 
     /// Remove the file.
@@ -281,7 +281,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// For details, refer to the documentation of the function that provided the URI.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn remove_file(&self, uri: &FileUri) -> crate::Result<()>;
 
     /// Remove the **empty** directory.
@@ -292,7 +292,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **writable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn remove_dir(&self, uri: &FileUri) -> crate::Result<()>;
 
     /// Creates a new empty file in the specified location and returns a URI.  
@@ -316,7 +316,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// and if that fails, `application/octet-stream` is used.  
     ///  
     /// # Support
-    /// All Android version.
+    /// All.
     fn create_file(
         &self,
         dir: &FileUri, 
@@ -340,22 +340,20 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// Thus, for directories with thousands or tens of thousands of elements, it may take several seconds.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn read_dir(&self, uri: &FileUri) -> crate::Result<impl Iterator<Item = Entry>>;
 
     /// Opens a system file picker and returns a **read-write** URIs.  
     /// If no file is selected or the user cancels, an empty vec is returned.  
     /// 
-    /// This provides a relatively consistent interface regardless of version or device, 
-    /// and also allows file selection from third-party apps or cloud storage.
-    /// 
     /// By default, returned URI is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
+    /// 
+    /// This provides a standardized file explorer-style interface, 
+    /// and also allows file selection from part of third-party apps or cloud storage.
     ///
     /// Removing the returned files is also supported in most cases, 
     /// but note that files provided by third-party apps may not be removable.  
-    ///  
-    /// Just to read images and videos, consider using [`AndroidFs::show_open_visual_media_dialog`] instead. 
     ///  
     /// # Args  
     /// - ***initial_location*** :  
@@ -372,13 +370,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// - ***multiple*** :  
     /// Indicates whether multiple file selection is allowed.  
     /// 
-    /// # Issue
-    /// This dialog has known issues. See the following for details and workarounds
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
-    /// 
     /// # Support
-    /// All Android version.
+    /// All.
     /// 
     /// # References
     /// <https://developer.android.com/reference/android/content/Intent#ACTION_OPEN_DOCUMENT>
@@ -389,15 +382,44 @@ pub trait AndroidFs<R: tauri::Runtime> {
         multiple: bool,
     ) -> crate::Result<Vec<FileUri>>;
 
+    /// Opens a file picker and returns a **readonly** URIs.  
+    /// If no file is selected or the user cancels, an empty vec is returned.  
+    ///  
+    /// Returned URI is valid until the app is terminated. Can not persist it.
+    /// 
+    /// This works differently depending on the model and version.  
+    /// But recent devices often have the similar behaviour as [`AndroidFs::show_open_visual_media_dialog`] or [`AndroidFs::show_open_file_dialog`].  
+    /// Use this, if you want your app to simply read/import data.
+    /// 
+    /// # Args  
+    /// - ***mime_types*** :  
+    /// The MIME types of the file to be selected.  
+    /// However, there is no guarantee that the returned file will match the specified types.  
+    /// If left empty, all file types will be available (equivalent to `["*/*"]`).  
+    ///  
+    /// - ***multiple*** :  
+    /// Indicates whether multiple file selection is allowed.  
+    /// 
+    /// # Support
+    /// All.
+    /// 
+    /// # References
+    /// <https://developer.android.com/reference/android/content/Intent#ACTION_GET_CONTENT>
+    fn show_open_content_dialog(
+        &self,
+        mime_types: &[&str],
+        multiple: bool
+    ) -> crate::Result<Vec<FileUri>>;
+
     /// Opens a media picker and returns a **readonly** URIs.  
     /// If no file is selected or the user cancels, an empty vec is returned.  
+    ///  
+    /// By default, returned URI is valid until the app is terminated. 
+    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     ///  
     /// This media picker provides a browsable interface that presents the user with their media library, 
     /// sorted by date from newest to oldest. 
     /// 
-    /// By default, returned URI is valid until the app is terminated. 
-    /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
-    ///  
     /// # Args  
     /// - ***target*** :  
     /// The media type of the file to be selected.  
@@ -405,11 +427,6 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ///  
     /// - ***multiple*** :  
     /// Indicates whether multiple file selection is allowed.  
-    ///  
-    /// # Issue
-    /// This dialog has known issues. See the following for details and workarounds
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
     ///  
     /// # Note
     /// The file obtained from this function cannot retrieve the correct file name using [`AndroidFs::get_name`].  
@@ -441,6 +458,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// By default, returned URI is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     /// 
+    /// This provides a standardized file explorer-style interface.
+    /// 
     /// # Args  
     /// - ***initial_location*** :  
     /// Indicate the initial location of dialog.  
@@ -448,13 +467,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// if it's a directory, or the directory that contains the specified file if not.  
     /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
     /// 
-    /// # Issue
-    /// This dialog has known issues. See the following for details and workarounds
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
-    ///  
     /// # Support
-    /// All Android version.
+    /// All.
     /// 
     /// # References
     /// <https://developer.android.com/reference/android/content/Intent#ACTION_OPEN_DOCUMENT_TREE>
@@ -478,6 +492,9 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// By default, returned URI is valid until the app is terminated. 
     /// If you want to persist it across app restarts, use [`AndroidFs::take_persistable_uri_permission`].
     /// 
+    /// This provides a standardized file explorer-style interface, 
+    /// and also allows file selection from part of third-party apps or cloud storage.
+    /// 
     /// Removing and reading the returned files is also supported in most cases, 
     /// but note that files provided by third-party apps may not.  
     ///  
@@ -496,13 +513,8 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// If this is None, MIME type is inferred from the extension of ***initial_file_name*** (not file name by user input)
     /// and if that fails, `application/octet-stream` is used.  
     ///  
-    /// # Issue
-    /// This dialog has known issues. See the following for details and workarounds
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/issues/1>  
-    /// - <https://github.com/aiueo13/tauri-plugin-android-fs/blob/main/README.md>  
-    /// 
     /// # Support
-    /// All Android version.
+    /// All.
     /// 
     /// # References
     /// <https://developer.android.com/reference/android/content/Intent#ACTION_CREATE_DOCUMENT>
@@ -525,7 +537,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_dialog`] ***cannot*** be used.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn show_share_file_dialog(&self, uri: &FileUri) -> crate::Result<()>;
 
     /// Opens a dialog for viewing file on other apps.  
@@ -541,7 +553,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This given from [`PrivateStorage`] or [`AndroidFs::show_open_visual_media_dialog`] ***cannot*** be used.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn show_view_file_dialog(&self, uri: &FileUri) -> crate::Result<()>;
 
     /// Determines whether the specified file can be used with [`AndroidFs::show_share_file_dialog`].
@@ -551,7 +563,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **readable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn can_share_file(&self, uri: &FileUri) -> crate::Result<bool>;
 
     /// Determines whether the specified file can be used with [`AndroidFs::show_view_file_dialog`].
@@ -562,7 +574,7 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// This needs to be **readable**.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn can_view_file(&self, uri: &FileUri) -> crate::Result<bool>;
 
     /// Take persistent permission to access the file, directory and its descendants.  
@@ -588,10 +600,10 @@ pub trait AndroidFs<R: tauri::Runtime> {
     ///         Because the permissions and validity period of the entry URIs depend on the origin directory.
     /// 
     /// # Support
-    /// All Android version. 
+    /// All. 
     fn take_persistable_uri_permission(&self, uri: &FileUri) -> crate::Result<()>;
 
-    /// Check a persisted URI permission grant by [`AndroidFs::take_persistable_uri_permission`].   
+    /// Check a persisted URI permission grant by [`AndroidFs::take_persistable_uri_permission`].  
     /// Returns false if there are only non-persistent permissions or no permissions.
     /// 
     /// # Args
@@ -602,13 +614,13 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// The mode of permission you want to check.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn check_persisted_uri_permission(&self, uri: &FileUri, mode: PersistableAccessMode) -> crate::Result<bool>;
 
-    /// Return list of all URI permission grants that have been persisted by [`AndroidFs::take_persistable_uri_permission`].   
+    /// Return list of all persisted URIs that have been persisted by [`AndroidFs::take_persistable_uri_permission`] and currently valid.   
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn get_all_persisted_uri_permissions(&self) -> crate::Result<impl Iterator<Item = PersistedUriPermission>>;
 
     /// Relinquish a persisted URI permission grant by [`AndroidFs::take_persistable_uri_permission`].   
@@ -618,19 +630,19 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// URI of the target file or directory.  
     ///
     /// # Support
-    /// All Android version.
+    /// All.
     fn release_persisted_uri_permission(&self, uri: &FileUri) -> crate::Result<()>;
 
     /// Relinquish a all persisted uri permission grants by [`AndroidFs::take_persistable_uri_permission`].  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn release_all_persisted_uri_permissions(&self) -> crate::Result<()>;
 
     /// Verify whether [`AndroidFs::show_open_visual_media_dialog`] is available on a given device.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn is_visual_media_dialog_available(&self) -> crate::Result<bool>;
 
     /// File storage intended for the app’s use only.
@@ -675,7 +687,8 @@ pub trait PublicStorage<R: tauri::Runtime> {
         self.create_file_in_public_dir(dir, relative_path_with_subdir, mime_type)
     }
 
-    /// Creates a new empty file in the specified public directory and returns a **persistent read-write** URI.  
+    /// Creates a new empty file in the specified public directory
+    /// and returns a **persistent read-write** URI.  
     ///  
     /// The created file has following features :   
     /// - Will be registered with the corresponding MediaStore as needed.  
@@ -685,6 +698,9 @@ pub trait PublicStorage<R: tauri::Runtime> {
     /// # Args
     /// - ***dir*** :  
     /// The base directory.  
+    /// When using [`PublicImageDir`], use only image MIME types for ***mime_type***, which is discussed below.; using other types may cause errors.
+    /// Similarly, use only the corresponding media types for [`PublicVideoDir`] and [`PublicAudioDir`].
+    /// Only [`PublicGeneralPurposeDir`] supports all MIME types. 
     ///  
     /// - ***relative_path_with_subdir*** :  
     /// The file path relative to the base directory.  
@@ -699,9 +715,6 @@ pub trait PublicStorage<R: tauri::Runtime> {
     /// The MIME type of the file to be created.  
     /// If this is None, MIME type is inferred from the extension of ***relative_path_with_subdir***
     /// and if that fails, `application/octet-stream` is used.  
-    /// When using [`PublicImageDir`], please use only image MIME types; using other types may cause errors.
-    /// Similarly, use only the corresponding media types for [`PublicVideoDir`] and [`PublicAudioDir`].
-    /// Only [`PublicGeneralPurposeDir`] supports all MIME types. 
     /// 
     /// # Support
     /// Android 10 (API level 29) or higher.  
@@ -722,13 +735,13 @@ pub trait PublicStorage<R: tauri::Runtime> {
     /// Verify whether [`PublicAudioDir::Audiobooks`] is available on a given device.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn is_audiobooks_dir_available(&self) -> crate::Result<bool>;
 
     /// Verify whether [`PublicAudioDir::Recordings`] is available on a given device.
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn is_recordings_dir_available(&self) -> crate::Result<bool>;
 
     fn app_handle(&self) -> &tauri::AppHandle<R>;
@@ -769,7 +782,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// ```
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn resolve_path(&self, dir: PrivateDir) -> crate::Result<std::path::PathBuf>;
 
     /// Get the absolute path of the specified relative path and base directory.  
@@ -778,7 +791,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn resolve_path_with(
         &self,
         dir: PrivateDir,
@@ -807,7 +820,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn write(
         &self, 
         base_dir: PrivateDir, 
@@ -834,7 +847,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn open_file(
         &self,
         base_dir: PrivateDir, 
@@ -854,7 +867,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn create_file(
         &self,
         base_dir: PrivateDir, 
@@ -871,7 +884,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn create_new_file(
         &self,
         base_dir: PrivateDir, 
@@ -890,7 +903,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn read(
         &self,
         base_dir: PrivateDir, 
@@ -909,7 +922,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn read_to_string(
         &self,
         base_dir: PrivateDir,
@@ -926,7 +939,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn read_dir(
         &self,
         base_dir: PrivateDir,
@@ -947,7 +960,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn remove_file(
         &self,
         base_dir: PrivateDir,
@@ -965,7 +978,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn remove_dir(
         &self,
         base_dir: PrivateDir,
@@ -987,7 +1000,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn remove_dir_all(
         &self,
         base_dir: PrivateDir,
@@ -1009,7 +1022,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn exists(
         &self,
         base_dir: PrivateDir,
@@ -1026,7 +1039,7 @@ pub trait PrivateStorage<R: tauri::Runtime> {
     /// See [`PrivateStorage::resolve_path`] for details.  
     /// 
     /// # Support
-    /// All Android version.
+    /// All.
     fn metadata(
         &self,
         base_dir: PrivateDir,

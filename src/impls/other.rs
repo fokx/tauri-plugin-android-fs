@@ -46,6 +46,14 @@ impl<R: Runtime> AndroidFs<R> for AndroidFsImpl<R> {
         Err(crate::Error::NotAndroid)
     }
 
+    fn show_open_content_dialog(
+        &self,
+        _mime_types: &[&str],
+        _multiple: bool
+    ) -> crate::Result<Vec<FileUri>> {
+        Err(crate::Error::NotAndroid)
+    }
+    
     fn show_open_visual_media_dialog(
         &self,
         _target: VisualMediaTarget,
