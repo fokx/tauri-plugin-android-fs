@@ -1,3 +1,7 @@
+# Version 8.3.1
+- Add `AndroidFs::show_open_content_dialog`
+- Update documentation.
+
 # Version 8.3.0
 - Add `AndroidFs::show_open_content_dialog`
 - Update documentation.

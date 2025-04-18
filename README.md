@@ -1,8 +1,10 @@
+Note: **I’m using a translation tool, so there may be some inappropriate expressions.**
+
 # Overview
 
-The Android file system is strict and complex because its behavior and the available APIs vary depending on the version. This plugin was created to provide explicit and consistent file operations and detailed and clear documentation. No special permission or configuration is required.  
+The Android file system is strict and complex. This plugin was created to provide practical file operations. You don’t need to set special permissions or configurations. 
 
-Note that this crate aims to provide practicality through detailed and clear documentation and a wide range of options, rather than focusing on clean functions that require minimal attention. If an error or unexpected behavior occurs, please first check the documentation for the function and  functions that provided arguments. If the issue persists, it would be helpful if you could let us know on [Github](https://github.com/aiueo13/tauri-plugin-android-fs/issues/new). 
+This crate aims to provide practicality through detailed and clear documentation and a wide range of options, rather than focusing on clean functions that require minimal attention. If an error or unexpected behavior occurs, please first check the documentation for the function and  functions that provided arguments. If the issue persists, it would be helpful if you could let us know on [Github](https://github.com/aiueo13/tauri-plugin-android-fs/issues/new). Function requests are also welcome. 
 
 # Setup
 Register this plugin with your Tauri project: 
@@ -248,10 +250,10 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
 
     // create a new empty PNG image file
     //
-    // This path is represented as follows
-    // ~/Pictures/{app_name}/my-image.png
-    // $HOME/Pictures/{app_name}/my-image.png
-    // /storage/emulated/0/Pictures/{app_name}/my-image.png
+    // This path is represented as follows:
+    //   ~/Pictures/{app_name}/my-image.png
+    //   $HOME/Pictures/{app_name}/my-image.png
+    //   /storage/emulated/0/Pictures/{app_name}/my-image.png
     let uri = storage.create_file_in_public_app_dir(
          PublicImageDir::Pictures, // Base directory
          "my-image.png", // Relative file path
@@ -268,10 +270,10 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
 
     // create a new empty text file
     //
-    // This path is represented as follows
-    // ~/Documents/{app_name}/2025-3-2/data.txt
-    // $HOME/Documents/{app_name}/2025-3-2/data.txt
-    // /storage/emulated/0/Documents/{app_name}/2025-3-2/data.txt
+    // This path is represented as follows:
+    //   ~/Documents/{app_name}/2025-3-2/data.txt
+    //   $HOME/Documents/{app_name}/2025-3-2/data.txt
+    //   /storage/emulated/0/Documents/{app_name}/2025-3-2/data.txt
     let uri = storage.create_file_in_public_app_dir(
          PublicGeneralPurposeDir::Documents, // Base directory
          "2025-3-2/data.txt", // Relative file path

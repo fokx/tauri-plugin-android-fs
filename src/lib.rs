@@ -660,13 +660,13 @@ pub trait PublicStorage<R: tauri::Runtime> {
     /// See [`PublicStorage::create_file_in_public_dir`] for description.  
     /// 
     /// This is the same as following: 
-    /// ``````ignore
+    /// ```ignore
     /// create_file_in_public_dir(
     ///     dir,
     ///     format!("{app_name}/{relative_path}"),
     ///     mime_type
     /// );
-    /// ``````
+    /// ```
     fn create_file_in_public_app_dir(
         &self,
         dir: impl Into<PublicDir>,
