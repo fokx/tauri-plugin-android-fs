@@ -50,7 +50,7 @@ Then, there are three main ways to manipulate files:
 Opens the file/folder picker to read and write user-selected entries.
 
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, FileAccessMode};
+use tauri_plugin_android_fs::{AndroidFsExt, FileAccessMode};
 
 fn file_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let api = app.android_fs();
@@ -91,7 +91,7 @@ fn file_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result
 }
 ```
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, Entry};
+use tauri_plugin_android_fs::{AndroidFsExt, Entry};
 
 fn dir_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let api = app.android_fs();
@@ -121,7 +121,7 @@ fn dir_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<
 }
 ```
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, FileUri, PersistableAccessMode, PrivateDir, PrivateStorage};
+use tauri_plugin_android_fs::{AndroidFsExt, FileUri, InitialLocation, PersistableAccessMode, PrivateDir};
 
 /// Opens a dialog to save the file and write contents to the selected file.
 /// 
@@ -198,8 +198,19 @@ fn save_file_with_dir_dialog(
     let dest_dir_uri = match dest_dir_uri {
         Some(dest_dir_uri) => dest_dir_uri,
         None => {
+            // Get initial location for folder picker.
+            // But returned uri might be ignored by it.
+            let initial_location = api.resolve_initial_location(
+                InitialLocation::TopPublicDir,
+                false
+            )?;
+
             // Show folder picker
-            let Some(uri) = api.show_manage_dir_dialog(None)? else {
+            let uri = api.show_manage_dir_dialog(
+                Some(&initial_location)
+            )?;
+
+            let Some(uri) = uri else {
                 // Canceled by user
                 return Ok(false)
             };
@@ -241,12 +252,12 @@ File storage that is available to other applications and users.
 Currently, this is for Android 10 (API level 29) or higher.  
 
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PublicGeneralPurposeDir, PublicImageDir, PublicStorage};
+use tauri_plugin_android_fs::{AndroidFsExt, PublicGeneralPurposeDir, PublicImageDir};
 
 fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let api = app.android_fs();
     let storage = api.public_storage();
-    let contents: Vec<u8> = vec![];
+    let contents = &[];
 
     // create a new empty PNG image file
     //
@@ -261,7 +272,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     )?;
 
     // write the contents to the PNG image
-    if let Err(e) = api.write(&uri, &contents) {
+    if let Err(e) = api.write(&uri, contents) {
         // handle err
         let _ = api.remove_file(&uri);
         return Err(e)
@@ -281,7 +292,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     )?;
 
     // write the contents to the text file
-    if let Err(e) = api.write(&uri, &contents) {
+    if let Err(e) = api.write(&uri, contents) {
         // handle err
         let _ = api.remove_file(&uri);
         return Err(e)
@@ -295,10 +306,11 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
 File storage intended for the app’s use only.
 
 ```rust
-use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, PrivateDir, PrivateStorage};
+use tauri_plugin_android_fs::{AndroidFsExt, PrivateDir};
 
 fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let storage = app.android_fs().private_storage();
+    let contents = &[];
 
     // Get the absolute path.
     // Apps can fully manage entries within this directory.
@@ -311,7 +323,7 @@ fn example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     storage.write(
         PrivateDir::Data, // Base directory
         "config/data1", // Relative file path
-        &[]
+        contents
     )?;
 
     // Read the contents.

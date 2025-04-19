@@ -1,3 +1,7 @@
+# Version 9.0.0
+- Change the API provider, such as `AndroidFs`, `PublicStorage`, and `PrivateStorage`, from trait to struct.
+- Update documentation.
+
 # Version 8.4.0
 - Add `AndroidFs::resolve_initial_location`
 - Update documentation.
@@ -36,6 +40,7 @@
 - Add `AndroidFs::write_via_kotlin`
 - Add `AndroidFs::write_via_kotlin_in`
 - Add `AndroidFs::need_write_via_kotlin`
+- Change the `AndroidFs::show_save_file_dialog` to return no None even when a file on Google Drive is selected.
 - Update documentation.
 
 # Version 7.0.2
