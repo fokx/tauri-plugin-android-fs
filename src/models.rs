@@ -353,6 +353,57 @@ pub enum PublicGeneralPurposeDir {
     Download,
 }
 
+impl std::fmt::Display for PublicImageDir {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PublicImageDir::Pictures => write!(f, "Pictures"),
+            PublicImageDir::DCIM => write!(f, "DCIM"),
+        }
+    }
+}
+
+impl std::fmt::Display for PublicVideoDir {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PublicVideoDir::Movies => write!(f, "Movies"),
+            PublicVideoDir::DCIM => write!(f, "DCIM"),
+        }
+    }
+}
+
+impl std::fmt::Display for PublicAudioDir {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PublicAudioDir::Music => write!(f, "Music"),
+            PublicAudioDir::Alarms => write!(f, "Alarms"),
+            PublicAudioDir::Audiobooks => write!(f, "Audiobooks"),
+            PublicAudioDir::Notifications => write!(f, "Notifications"),
+            PublicAudioDir::Podcasts => write!(f, "Podcasts"),
+            PublicAudioDir::Ringtones => write!(f, "Ringtones"),
+            PublicAudioDir::Recordings => write!(f, "Recordings"),
+        }
+    }
+}
+
+impl std::fmt::Display for PublicGeneralPurposeDir {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            PublicGeneralPurposeDir::Documents => write!(f, "Documents"),
+            PublicGeneralPurposeDir::Download => write!(f, "Download"),
+        }
+    }
+}
+
+impl std::fmt::Display for PublicDir {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            PublicDir::Image(p) => p.fmt(f),
+            PublicDir::Video(p) => p.fmt(f),
+            PublicDir::Audio(p) => p.fmt(f),
+            PublicDir::GeneralPurpose(p) => p.fmt(f),
+        }
+    }
+}
 
 macro_rules! impl_into_pubdir {
     ($target: ident, $wrapper: ident) => {
@@ -367,3 +418,23 @@ impl_into_pubdir!(PublicImageDir, Image);
 impl_into_pubdir!(PublicVideoDir, Video);
 impl_into_pubdir!(PublicAudioDir, Audio);
 impl_into_pubdir!(PublicGeneralPurposeDir, GeneralPurpose);
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum InitialLocation<'a> {
+
+    TopPublicDir,
+
+    PublicDir(PublicDir),
+    
+    DirInPublicDir {
+        base_dir: PublicDir,
+        relative_path: &'a str,
+    }
+}
+
+impl<T: Into<PublicDir>> From<T> for InitialLocation<'_> {
+    fn from(value: T) -> Self {
+        InitialLocation::PublicDir(value.into())
+    }
+}

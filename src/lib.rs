@@ -10,6 +10,17 @@ pub use models::*;
 pub use error::{Error, Result};
 pub use impls::{AndroidFsExt, init};
 
+macro_rules! on_android {
+    ($action: expr) => {{
+        #[cfg(not(target_os = "android"))] {
+            Err(crate::Error::NotAndroid)
+        }
+        #[cfg(target_os = "android")] {
+            $action
+        }
+    }};
+}
+
 /// API
 pub trait AndroidFs<R: tauri::Runtime> {
 
@@ -247,8 +258,11 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// 
     /// # Support
     /// All.
+    #[allow(unused)]
     fn need_write_via_kotlin(&self, uri: &FileUri) -> crate::Result<bool> {
-        Ok(uri.uri.starts_with("content://com.google.android.apps.docs.storage"))
+        on_android!({
+            Ok(uri.uri.starts_with("content://com.google.android.apps.docs.storage"))
+        })
     }
 
     /// Copies the contents of src file to dest. 
@@ -361,6 +375,12 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// System will do its best to launch the dialog in the specified entry 
     /// if it's a directory, or the directory that contains the specified file if not.  
     /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
+    /// This must be a URI taken from following :   
+    ///     - [`AndroidFs::resolve_initial_location`]
+    ///     - [`AndroidFs::show_open_file_dialog`]
+    ///     - [`AndroidFs::show_save_file_dialog`]
+    ///     - [`AndroidFs::show_manage_dir_dialog`]
+    ///     - [`AndroidFs::read_dir`] (with `AndroidFs::show_manage_dir_dialog`)
     /// 
     /// - ***mime_types*** :  
     /// The MIME types of the file to be selected.  
@@ -466,6 +486,12 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// System will do its best to launch the dialog in the specified entry 
     /// if it's a directory, or the directory that contains the specified file if not.  
     /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
+    /// This must be a URI taken from following :   
+    ///     - [`AndroidFs::resolve_initial_location`]
+    ///     - [`AndroidFs::show_open_file_dialog`]
+    ///     - [`AndroidFs::show_save_file_dialog`]
+    ///     - [`AndroidFs::show_manage_dir_dialog`]
+    ///     - [`AndroidFs::read_dir`] (with `AndroidFs::show_manage_dir_dialog`)
     /// 
     /// # Support
     /// All.
@@ -504,6 +530,12 @@ pub trait AndroidFs<R: tauri::Runtime> {
     /// System will do its best to launch the dialog in the specified entry 
     /// if it's a directory, or the directory that contains the specified file if not.  
     /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
+    /// This must be a URI taken from following :   
+    ///     - [`AndroidFs::resolve_initial_location`]
+    ///     - [`AndroidFs::show_open_file_dialog`]
+    ///     - [`AndroidFs::show_save_file_dialog`]
+    ///     - [`AndroidFs::show_manage_dir_dialog`]
+    ///     - [`AndroidFs::read_dir`] (with `AndroidFs::show_manage_dir_dialog`)
     /// 
     /// - ***initial_file_name*** :  
     /// An initial file name, but the user may change this value before creating the file.  
@@ -524,6 +556,88 @@ pub trait AndroidFs<R: tauri::Runtime> {
         initial_file_name: impl AsRef<str>,
         mime_type: Option<&str>,
     ) -> crate::Result<Option<FileUri>>;
+
+    /// Create an **unstable and restricted** URI for the specified directory.  
+    /// 
+    /// This should only be used as `initial_location` in the dialog. 
+    /// It must not be used for any other purpose.  
+    /// And this is an informal method and is not guaranteed to work reliably.
+    /// But this URI does not cause the dialog to error.  
+    /// 
+    /// So please use this with the mindset that it’s better than doing nothing.  
+    ///  
+    /// # Examples
+    /// ```
+    /// use tauri_plugin_android_fs::{AndroidFs, AndroidFsExt, InitialLocation, PublicGeneralPurposeDir, PublicImageDir};
+    ///
+    /// fn sample(app: tauri::AppHandle) {
+    ///     let api = app.android_fs();
+    ///
+    ///     // Get URI of the top directory
+    ///     let initial_location = api.resolve_initial_location(
+    ///         InitialLocation::TopPublicDir,
+    ///         false,
+    ///     ).expect("Should be on Android");
+    ///
+    ///     // Get URI of ~/Pictures/
+    ///     let initial_location = api.resolve_initial_location(
+    ///         PublicImageDir::Pictures,
+    ///         false
+    ///     ).expect("Should be on Android");
+    ///
+    ///     // Get URI of ~/Documents/sub_dir1/sub_dir2/
+    ///     let initial_location = api.resolve_initial_location(
+    ///         InitialLocation::DirInPublicDir {
+    ///             base_dir: PublicGeneralPurposeDir::Documents.into(),
+    ///             relative_path: "sub_dir1/sub_dir2"
+    ///         },
+    ///         true // Create dirs of 'sub_dir1' and 'sub_dir2', if not exists
+    ///     ).expect("Should be on Android");
+    ///
+    ///     // Open dialog with initial_location
+    ///     let _ = api.show_save_file_dialog(Some(&initial_location), "", None);
+    ///     let _ = api.show_open_file_dialog(Some(&initial_location), &[], true);
+    ///     let _ = api.show_manage_dir_dialog(Some(&initial_location));
+    /// }
+    /// ```
+    /// 
+    /// # Support
+    /// All.
+    #[allow(unused)]
+    fn resolve_initial_location<'a>(
+        &self,
+        dir: impl Into<InitialLocation<'a>>,
+        create_dirs: bool
+    ) -> crate::Result<FileUri> {
+        on_android!({
+            let top_dir = "content://com.android.externalstorage.documents/document/primary%3A";
+
+            match dir.into() {
+                InitialLocation::TopPublicDir => {
+                    Ok(FileUri { uri: top_dir.into(), document_top_tree_uri: None })
+                },
+                InitialLocation::PublicDir(dir) => {
+                    Ok(FileUri { uri: format!("{top_dir}{dir}"), document_top_tree_uri: None })
+                },
+                InitialLocation::DirInPublicDir { base_dir, relative_path } => {
+                    let relative_path = relative_path.trim_matches('/');
+                    if relative_path.is_empty() {
+                        return Ok(FileUri { uri: format!("{top_dir}{base_dir}"), document_top_tree_uri: None })
+                    };
+
+                    if create_dirs {
+                        let _ = self.public_storage()
+                            .create_file_in_public_dir(base_dir, format!("{relative_path}/tmp"), Some("application/octet-stream"))
+                            .and_then(|u| self.remove_file(&u));
+                    }
+        
+                    let sub_dirs = relative_path.replace("/", "%2F");
+        
+                    Ok(FileUri { uri: format!("{top_dir}{base_dir}%2F{sub_dirs}"), document_top_tree_uri: None })
+                }
+            }
+        })
+    }
 
     /// Opens a dialog for sharing file to other apps.  
     /// 

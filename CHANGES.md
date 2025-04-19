@@ -1,3 +1,10 @@
+# Version 8.4.0
+- Add `AndroidFs::resolve_initial_location`
+- Update documentation.
+
+# Version 8.3.2
+- Fix a bug that caused document generation to fail in doc.rs.
+
 # Version 8.3.1
 - Add `AndroidFs::show_open_content_dialog`
 - Update documentation.
