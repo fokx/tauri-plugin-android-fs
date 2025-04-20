@@ -78,11 +78,11 @@ class MediaFileController(private val activity: Activity): FileController {
     }
 
     override fun deleteEmptyDir(uri: FileUri) {
-        throw Error("This dir cannot delete with ${uri.uri}")
+        throw Error("Unsupported operation for ${uri.uri}")
     }
 
     override fun deleteDirAll(uri: FileUri) {
-        throw Error("This dir cannot delete with ${uri.uri}")
+        throw Error("Unsupported operation for ${uri.uri}")
     }
 
     override fun readDir(dirUri: FileUri): JSArray {
