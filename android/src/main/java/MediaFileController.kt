@@ -71,10 +71,18 @@ class MediaFileController(private val activity: Activity): FileController {
         return res
     }
 
-    override fun delete(uri: FileUri) {
+    override fun deleteFile(uri: FileUri) {
         if (activity.contentResolver.delete(Uri.parse(uri.uri), null, null) <= 0) {
             throw Error("Failed to delete file: ${uri.uri}")
         }
+    }
+
+    override fun deleteEmptyDir(uri: FileUri) {
+        throw Error("This dir cannot delete with ${uri.uri}")
+    }
+
+    override fun deleteDirAll(uri: FileUri) {
+        throw Error("This dir cannot delete with ${uri.uri}")
     }
 
     override fun readDir(dirUri: FileUri): JSArray {

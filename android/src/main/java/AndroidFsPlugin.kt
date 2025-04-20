@@ -120,7 +120,7 @@ enum class BaseDir {
 }
 
 @InvokeArg
-class RemoveFileArgs {
+class DeleteArgs {
     lateinit var uri: FileUri
 }
 
@@ -561,13 +561,39 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
-    fun delete(invoke: Invoke) {
+    fun deleteFile(invoke: Invoke) {
         try {
-            val args = invoke.parseArgs(RemoveFileArgs::class.java)
-            getFileController(args.uri).delete(args.uri)
+            val args = invoke.parseArgs(DeleteArgs::class.java)
+            getFileController(args.uri).deleteFile(args.uri)
             invoke.resolve()
         } catch (ex: Exception) {
-            val message = ex.message ?: "Failed to invoke removeFile."
+            val message = ex.message ?: "Failed to invoke deleteFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun deleteEmptyDir(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(DeleteArgs::class.java)
+            getFileController(args.uri).deleteEmptyDir(args.uri)
+            invoke.resolve()
+        } catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke deleteEmptyDir."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun deleteDirAll(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(DeleteArgs::class.java)
+            getFileController(args.uri).deleteDirAll(args.uri)
+            invoke.resolve()
+        } catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke deleteDirAll."
             Logger.error(message)
             invoke.reject(message)
         }

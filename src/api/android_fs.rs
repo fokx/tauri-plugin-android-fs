@@ -374,7 +374,8 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     /// Target file URI.  
     /// This needs to be **writable**, at least. But even if it is, 
     /// removing may not be possible in some cases. 
-    /// For details, refer to the documentation of the function that provided the URI.
+    /// For details, refer to the documentation of the function that provided the URI.  
+    /// If not file, an error will occur.
     /// 
     /// # Support
     /// All.
@@ -384,7 +385,7 @@ impl<R: tauri::Runtime> AndroidFs<R> {
             impl_de!(struct Res;);
     
             self.api
-                .run_mobile_plugin::<Res>("delete", Req { uri })
+                .run_mobile_plugin::<Res>("deleteFile", Req { uri })
                 .map(|_| ())
                 .map_err(Into::into)
         })
@@ -395,13 +396,46 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     /// # Args
     /// - ***uri*** :  
     /// Target directory URI.  
-    /// This needs to be **writable**.
+    /// This needs to be **writable**.  
+    /// If not empty directory, an error will occur.
     /// 
     /// # Support
     /// All.
     pub fn remove_dir(&self, uri: &FileUri) -> crate::Result<()> {
         on_android!({
-            self.remove_file(uri)
+            on_android!({
+                impl_se!(struct Req<'a> { uri: &'a FileUri });
+                impl_de!(struct Res;);
+        
+                self.api
+                    .run_mobile_plugin::<Res>("deleteEmptyDir", Req { uri })
+                    .map(|_| ())
+                    .map_err(Into::into)
+            })
+        })
+    }
+
+    /// Removes a directory, after removing all its contents. Use carefully!
+    /// 
+    /// # Args
+    /// - ***uri*** :  
+    /// Target directory URI.  
+    /// This needs to be **writable**.  
+    /// If not dir, an error will occur.
+    /// 
+    /// # Support
+    /// All.
+    pub fn remove_dir_all(&self, uri: &FileUri) -> crate::Result<()> {
+        on_android!({
+            on_android!({
+                impl_se!(struct Req<'a> { uri: &'a FileUri });
+                impl_de!(struct Res;);
+        
+                self.api
+                    .run_mobile_plugin::<Res>("deleteDirAll", Req { uri })
+                    .map(|_| ())
+                    .map_err(Into::into)
+            })
         })
     }
 

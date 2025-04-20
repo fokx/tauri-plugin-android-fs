@@ -67,12 +67,49 @@ class RawFileController: FileController {
         return res
     }
 
-    override fun delete(uri: FileUri) {
-        if (!File(Uri.parse(uri.uri).path!!).delete()) {
+    override fun deleteFile(uri: FileUri) {
+        val file = File(Uri.parse(uri.uri).path!!)
+        if (!file.isFile) {
+            throw Error("This is not file: ${uri.uri}")
+        }
+        if (!file.delete()) {
             throw Error("Failed to delete file: ${uri.uri}")
         }
     }
 
+    override fun deleteEmptyDir(uri: FileUri) {
+        val file = File(Uri.parse(uri.uri).path!!)
+        if (!file.isDirectory) {
+            throw Error("This is not dir: ${uri.uri}")
+        }
+        if (!file.delete()) {
+            throw Error("Failed to delete file: ${uri.uri}")
+        }
+    }
+
+    override fun deleteDirAll(uri: FileUri) {
+        val file = File(Uri.parse(uri.uri).path!!)
+        if (!file.isDirectory) {
+            throw Error("This is not dir: ${uri.uri}")
+        }
+        
+        if (!deleteRecursive(file)) {
+            throw Error("Failed to delete file: ${uri.uri}")
+        }
+    }
+
+
+    private fun deleteRecursive(fileOrDirectory: File): Boolean {
+        if (fileOrDirectory.isDirectory) {
+            val children = fileOrDirectory.listFiles()
+            if (children != null) {
+                for (child in children) {
+                    deleteRecursive(child)
+                }
+            }
+        }
+        return fileOrDirectory.delete()
+    }
 
     // フォルダの場合のみnullを返す
     private fun _getMimeType(file: File): String? {

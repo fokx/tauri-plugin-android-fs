@@ -1,3 +1,9 @@
+# Version 9.1.0
+- Add `AndroidFs::remove_dir_all`
+- Fix a bug that allowed non-files to be deleted with `AndroidFs::remove_file`.
+- Fix a bug that allowed non-empty-dir to be deleted with `AndroidFs::remove_dir`.
+- Update documentation.
+
 # Version 9.0.0
 - Change the API provider, such as `AndroidFs`, `PublicStorage`, and `PrivateStorage`, from trait to struct.
 - Update documentation.

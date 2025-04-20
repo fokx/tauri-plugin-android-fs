@@ -135,7 +135,47 @@ class DocumentFileController(private val activity: Activity): FileController {
         return res
     }
 
-    override fun delete(uri: FileUri) {
+    override fun deleteFile(uri: FileUri) {
+        if (getMimeType(uri) == null) {
+            throw Error("This is dir, not file: ${uri.uri}")
+        }
+        if (!DocumentsContract.deleteDocument(activity.contentResolver, Uri.parse(uri.uri))) {
+            throw Error("Failed to delete file: ${uri.uri}")
+        }
+    }
+
+    override fun deleteDirAll(uri: FileUri) {
+        if (getMimeType(uri) != null) {
+            throw Error("This is file, not dir: ${uri.uri}")
+        }
+        if (!DocumentsContract.deleteDocument(activity.contentResolver, Uri.parse(uri.uri))) {
+            throw Error("Failed to delete file: ${uri.uri}")
+        }
+    }
+
+    override fun deleteEmptyDir(uri: FileUri) {
+        if (getMimeType(uri) != null) {
+            throw Error("This is file, not dir: ${uri.uri}")
+        }
+
+        val topTreeUri = Uri.parse(uri.documentTopTreeUri!!)
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+            topTreeUri,
+            DocumentsContract.getDocumentId(Uri.parse(uri.uri))
+        )
+        val cursor = activity.contentResolver.query(
+            childrenUri,
+            arrayOf(),
+            null,
+            null,
+            null
+        )
+        cursor?.use {
+            if (it.moveToFirst()) {
+                throw Error("Dir is not empty: ${uri.uri}")
+            }
+        }
+
         if (!DocumentsContract.deleteDocument(activity.contentResolver, Uri.parse(uri.uri))) {
             throw Error("Failed to delete file: ${uri.uri}")
         }
