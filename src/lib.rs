@@ -11,12 +11,22 @@ pub use error::{Error, Result};
 pub use api::{AndroidFs, PrivateStorage, PublicStorage};
 
 
+pub(crate) const TMP_DIR_RELATIVE_PATH: &str = "pluginAndroidFs-tmpDir-33bd1538-4434-dc4e-7e2f-515405cccbf9";
+
 /// Initializes the plugin.
 pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     let builder = tauri::plugin::Builder::new("android-fs")
         .setup(|app, api| {
             use tauri::Manager as _;
-            app.manage(AndroidFs::new(app.clone(), api)?);
+
+            let afs = AndroidFs::new(app.clone(), api)?;
+
+            // Cleanup temporary directory
+            let _ = afs
+                .private_storage()
+                .remove_dir_all(PrivateDir::Cache, Some(TMP_DIR_RELATIVE_PATH));
+
+            app.manage(afs);
             Ok(())
         });
 

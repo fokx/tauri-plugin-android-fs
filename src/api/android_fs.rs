@@ -296,30 +296,31 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     ) -> crate::Result<T> {
 
         on_android!({
-            static TMP_FILE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+            let tmp_file_path = {
+                use std::sync::atomic::{AtomicUsize, Ordering};
 
-            // 一時ファイルの排他アクセスを保証
-            let _guard = TMP_FILE_LOCK.lock();
+                static COUNTER: AtomicUsize = AtomicUsize::new(0);
+                let id = COUNTER.fetch_add(1, Ordering::Relaxed);
 
-            // 一時ファイルのパスを取得
-            let tmp_file_path = self
-                .private_storage()
-                .resolve_path_with(PrivateDir::Cache, "tauri-plugin-android-fs-tempfile-write-via-kotlin")?;
+                self.private_storage().resolve_path_with(
+                    PrivateDir::Cache,
+                    format!("{TMP_DIR_RELATIVE_PATH}/write_via_kotlin_in {id}")
+                )?
+            };
 
-            // 一時ファイルに内容を書き込む
-            // エラー処理は一時ファイルを削除するまで保留
+            if let Some(parent) = tmp_file_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+
             let result = {
                 let ref mut file = std::fs::File::create(&tmp_file_path)?;
                 contents_writer(file)
             };
 
-            // 上記処理が成功していれば、一時ファイルの内容をkotlin側で指定されたファイルにコピーする
-            // エラー処理は一時ファイルを削除するまで保留
             let result = result
                 .map_err(crate::Error::from)
                 .and_then(|t| self.copy_via_kotlin(&(&tmp_file_path).into(), uri).map(|_| t));
 
-            // 一時ファイルを削除
             let _ = std::fs::remove_file(&tmp_file_path);
 
             result
@@ -403,39 +404,144 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     /// All.
     pub fn remove_dir(&self, uri: &FileUri) -> crate::Result<()> {
         on_android!({
-            on_android!({
-                impl_se!(struct Req<'a> { uri: &'a FileUri });
-                impl_de!(struct Res;);
+            impl_se!(struct Req<'a> { uri: &'a FileUri });
+            impl_de!(struct Res;);
         
-                self.api
-                    .run_mobile_plugin::<Res>("deleteEmptyDir", Req { uri })
-                    .map(|_| ())
-                    .map_err(Into::into)
-            })
+            self.api
+                .run_mobile_plugin::<Res>("deleteEmptyDir", Req { uri })
+                .map(|_| ())
+                .map_err(Into::into)
         })
     }
 
-    /// Removes a directory, after removing all its contents. Use carefully!
+    /// Removes a directory and all its contents. Use carefully!
     /// 
     /// # Args
     /// - ***uri*** :  
     /// Target directory URI.  
     /// This needs to be **writable**.  
-    /// If not dir, an error will occur.
+    /// If not directory, an error will occur.
     /// 
     /// # Support
     /// All.
     pub fn remove_dir_all(&self, uri: &FileUri) -> crate::Result<()> {
         on_android!({
-            on_android!({
-                impl_se!(struct Req<'a> { uri: &'a FileUri });
-                impl_de!(struct Res;);
+            impl_se!(struct Req<'a> { uri: &'a FileUri });
+            impl_de!(struct Res;);
         
-                self.api
-                    .run_mobile_plugin::<Res>("deleteDirAll", Req { uri })
-                    .map(|_| ())
-                    .map_err(Into::into)
-            })
+            self.api
+                .run_mobile_plugin::<Res>("deleteDirAll", Req { uri })
+                .map(|_| ())
+                .map_err(Into::into)
+        })
+    }
+
+    /// See [`AndroidFs::get_thumbnail_to`] for descriptions.  
+    /// 
+    /// If thumbnail does not wrote to dest, return false.
+    pub fn get_thumbnail_to(
+        &self, 
+        src: &FileUri,
+        dest: &FileUri,
+        preferred_size: Size,
+        decode: DecodeOption,
+    ) -> crate::Result<bool> {
+
+        on_android!({
+            impl_se!(struct Req<'a> {
+                src: &'a FileUri, 
+                dest: &'a FileUri,
+                format: &'a str,
+                quality: u8,
+                width: u32,
+                height: u32,
+            });
+            impl_de!(struct Res { value: bool });
+
+            let (quality, format) = match decode {
+                DecodeOption::Png => (1.0, "Png"),
+                DecodeOption::Jpeg => (0.75, "Jpeg"),
+                DecodeOption::Webp => (0.7, "Webp"),
+                DecodeOption::JpegWith { quality } => (quality, "Jpeg"),
+                DecodeOption::WebpWith { quality } => (quality, "Webp"),
+            };
+            let quality = (quality * 100.0).clamp(0.0, 100.0) as u8;
+            let Size { width, height } = preferred_size;
+        
+            self.api
+                .run_mobile_plugin::<Res>("getThumbnail", Req { src, dest, format, quality, width, height })
+                .map(|v| v.value)
+                .map_err(Into::into)
+        })
+    }
+
+    /// Query the provider to get a file thumbnail.  
+    /// If thumbnail does not exist it, return None.
+    /// 
+    /// Note this does not cache. Please do it in your part if need.  
+    /// 
+    /// # Args
+    /// - ***uri*** :  
+    /// Targe file uri.  
+    /// Thumbnail availablty depends on the file provider.  
+    /// In general, images and videos are available.  
+    /// For files in [`PrivateStorage`], 
+    /// the file type must match the filename extension.  
+    /// 
+    /// - ***preferred_size*** :  
+    /// Optimal thumbnail size desired.  
+    /// This may return a thumbnail of a different size, 
+    /// but never more than double the requested size. 
+    /// In any case, the aspect ratio is maintained.
+    /// 
+    /// - ***decode*** :  
+    /// Thumbnail image format.  
+    /// [`DecodeOption::Jpeg`] is recommended. 
+    /// If you need transparency, use others.
+    /// 
+    /// # Support
+    /// All.
+    pub fn get_thumbnail(
+        &self,
+        uri: &FileUri,
+        preferred_size: Size,
+        decode: DecodeOption,
+    ) -> crate::Result<Option<Vec<u8>>> {
+
+        on_android!({
+            let tmp_file_path = {
+                use std::sync::atomic::{AtomicUsize, Ordering};
+
+                static COUNTER: AtomicUsize = AtomicUsize::new(0);
+                let id = COUNTER.fetch_add(1, Ordering::Relaxed);
+
+                self.private_storage().resolve_path_with(
+                    PrivateDir::Cache,
+                    format!("{TMP_DIR_RELATIVE_PATH}/get_thumbnail {id}")
+                )?
+            };
+
+            if let Some(parent) = tmp_file_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+
+            std::fs::File::create(&tmp_file_path)?;
+
+            let result = self.get_thumbnail_to(uri, &(&tmp_file_path).into(), preferred_size, decode)
+                .and_then(|ok| {
+                    if (ok) {
+                        std::fs::read(&tmp_file_path)
+                            .map(Some)
+                            .map_err(Into::into)
+                    }
+                    else {
+                        Ok(None)
+                    }
+                });
+
+            let _ = std::fs::remove_file(&tmp_file_path);
+
+            result
         })
     }
 

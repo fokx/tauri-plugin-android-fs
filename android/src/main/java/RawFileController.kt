@@ -1,7 +1,10 @@
 package com.plugin.android_fs
 
 import android.net.Uri
+import android.graphics.Bitmap
 import android.webkit.MimeTypeMap
+import android.util.Size
+import android.media.ThumbnailUtils
 import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
 import java.io.File
@@ -96,6 +99,23 @@ class RawFileController: FileController {
         if (!deleteRecursive(file)) {
             throw Error("Failed to delete file: ${uri.uri}")
         }
+    }
+
+    override fun getThumbnail(uri: FileUri, width: Int, height: Int): Bitmap? {
+        val file = File(Uri.parse(uri.uri).path!!)
+        val mimeType = _getMimeType(file)!!
+        val size = Size(width, height)
+
+        try {
+            when {
+                mimeType.startsWith("image/") -> return ThumbnailUtils.createImageThumbnail(file, size, null)
+                mimeType.startsWith("video/") -> return ThumbnailUtils.createVideoThumbnail(file, size, null)
+                mimeType.startsWith("audio/") -> return ThumbnailUtils.createAudioThumbnail(file, size, null)
+            }
+        }
+        catch (ignore: Exception) {}
+
+        return null
     }
 
 

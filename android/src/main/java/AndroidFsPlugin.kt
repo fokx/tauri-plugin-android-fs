@@ -3,6 +3,7 @@ package com.plugin.android_fs
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -27,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.OutputStream
 
 @InvokeArg
 class GetFileDescriptorArgs {
@@ -37,6 +39,16 @@ class GetFileDescriptorArgs {
 @InvokeArg
 class GetNameArgs {
     lateinit var uri: FileUri
+}
+
+@InvokeArg
+class GetThumbnailArgs {
+    lateinit var src: FileUri
+    lateinit var dest: FileUri
+    var width: Int = -1
+    var height: Int = -1
+    var quality: Int = -1
+    lateinit var format: String
 }
 
 @InvokeArg
@@ -561,6 +573,91 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
+    fun getThumbnail(invoke: Invoke) {
+        try {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val res = JSObject()
+                    res.put("value", _getThumbnail(invoke))
+                    
+                    withContext(Dispatchers.Main) {
+                        invoke.resolve(res) 
+                    }
+                }
+                catch (ex: Exception) {
+                    val message = ex.message ?: "Failed to invoke getThumbnail."
+                    Logger.error(message)
+                    invoke.reject(message)
+                }
+            }
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke getThumbnail."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+    
+    private fun _getThumbnail(invoke: Invoke): Boolean {
+        var out: OutputStream? = null
+        var thumbnail: Bitmap? = null
+        var img: Bitmap? = null
+
+        try {
+            val args = invoke.parseArgs(GetThumbnailArgs::class.java)
+            val dest = Uri.parse(args.dest.uri)
+            val width = args.width
+            val height = args.height
+            val compressFormat = when (args.format.lowercase()) {
+                "jpeg" -> Bitmap.CompressFormat.JPEG
+                "png" -> Bitmap.CompressFormat.PNG
+                "webp" -> Bitmap.CompressFormat.WEBP_LOSSY
+                else -> throw Exception("Illegal format: $args.format")
+            }
+
+            img = getFileController(args.src).getThumbnail(
+                args.src,
+                width,
+                height
+            )
+
+            if (img == null) {
+                return false
+            }
+
+            thumbnail = if (img.width >= width * 2 || img.height >= height * 2) {
+                val ratio = minOf(width.toFloat() / img.width, height.toFloat() / img.height)
+                Bitmap.createScaledBitmap(
+                    img,
+                    (img.width * ratio).toInt(),
+                    (img.height * ratio).toInt(),
+                    false
+                )
+            }
+            else {
+                img
+            }
+            
+            out = activity.contentResolver
+                .openOutputStream(dest, "wt")
+                ?: throw Exception("Failed to open output stream: $dest")
+
+            if (!thumbnail.compress(compressFormat, args.quality.coerceIn(0, 100), out)) {
+                throw Exception("Bitmap.compress() returned false for $dest")
+            }
+            
+            out.flush()
+            
+            return true
+        }
+        finally {
+            out?.close()
+            thumbnail?.recycle()
+            img?.recycle()
+        }
+    }
+
+    @Command
     fun deleteFile(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(DeleteArgs::class.java)
@@ -922,16 +1019,28 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     @Command
     fun getFileDescriptor(invoke: Invoke) {
         try {
-            val args = invoke.parseArgs(GetFileDescriptorArgs::class.java)
-            val fd = activity.contentResolver
-                .openAssetFileDescriptor(Uri.parse(args.uri.uri), args.mode)!!
-                .parcelFileDescriptor
-                .detachFd()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val args = invoke.parseArgs(GetFileDescriptorArgs::class.java)
+                    val fd = activity.contentResolver
+                        .openAssetFileDescriptor(Uri.parse(args.uri.uri), args.mode)!!
+                        .parcelFileDescriptor
+                        .detachFd()
 
-            val res = JSObject()
-            res.put("fd", fd)
-            invoke.resolve(res)
-        } catch (ex: Exception) {
+                    val res = JSObject()
+                    res.put("fd", fd)
+
+                    withContext(Dispatchers.Main) {
+                        invoke.resolve(res)
+                    }
+                } catch (ex: Exception) {
+                    val message = ex.message ?: "Failed to invoke getFileDescriptor."
+                    Logger.error(message)
+                    invoke.reject(message)
+                }
+            }
+        }
+        catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke getFileDescriptor."
             Logger.error(message)
             invoke.reject(message)

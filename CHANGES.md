@@ -1,3 +1,9 @@
+# Version 9.2.0
+- Add `AndroidFs::get_thumbnail`
+- Add `AndroidFs::get_thumbnail`_to
+- Fix an issue where the UI would freeze and become ANR error if the response was too long when using `AndroidFs::open_file`.
+- Update documentation.
+
 # Version 9.1.0
 - Add `AndroidFs::remove_dir_all`
 - Fix a bug that allowed non-files to be deleted with `AndroidFs::remove_file`.

@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.graphics.Bitmap
+import android.graphics.Point
 import androidx.core.database.getStringOrNull
 import android.provider.MediaStore
 import app.tauri.plugin.JSArray
@@ -179,6 +181,20 @@ class DocumentFileController(private val activity: Activity): FileController {
         if (!DocumentsContract.deleteDocument(activity.contentResolver, Uri.parse(uri.uri))) {
             throw Error("Failed to delete file: ${uri.uri}")
         }
+    }
+
+     override fun getThumbnail(uri: FileUri, width: Int, height: Int): Bitmap? {
+        try {
+            return DocumentsContract.getDocumentThumbnail(
+                activity.contentResolver, 
+                Uri.parse(uri.uri), 
+                Point(width, height), 
+                null
+            )
+        }
+        catch (ignore: Exception) {}
+
+        return null
     }
 
 

@@ -1,5 +1,6 @@
 package com.plugin.android_fs
 
+import android.graphics.Bitmap
 import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
 
@@ -18,4 +19,6 @@ interface FileController {
     fun deleteEmptyDir(uri: FileUri)
 
     fun deleteDirAll(uri: FileUri)
+
+    fun getThumbnail(uri: FileUri, width: Int, height: Int): Bitmap?
 }

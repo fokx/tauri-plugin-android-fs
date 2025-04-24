@@ -5,6 +5,12 @@ import android.content.ContentValues
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.core.database.getStringOrNull
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.media.MediaMetadataRetriever
+import android.media.MediaMetadataRetriever.OPTION_PREVIOUS_SYNC
+import android.os.Build
+import android.util.Size
 import app.tauri.plugin.JSArray
 import app.tauri.plugin.JSObject
 
@@ -89,6 +95,19 @@ class MediaFileController(private val activity: Activity): FileController {
         throw Error("Unsupported or not dir: ${dirUri.uri}")
     }
 
+    override fun getThumbnail(uri: FileUri, width: Int, height: Int): Bitmap? {
+        try {
+            return activity.contentResolver.loadThumbnail(
+                Uri.parse(uri.uri), 
+                Size(width, height), 
+                null
+            )
+        }
+        catch (ignore: Exception) {}
+
+        return null
+    }
+    
 
     private data class Columns(
         val displayName: String,

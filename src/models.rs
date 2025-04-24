@@ -11,16 +11,18 @@ use serde::{Deserialize, Serialize};
 /// use tauri_plugin_fs::FilePath;
 /// 
 /// let uri: FileUri = unimplemented!();
-/// 
 /// let path: FilePath = uri.into();
-/// 
 /// let uri: FileUri = path.into();
 /// ```
 /// 
 /// # Typescript type
-/// You should use the following type because the inner value should not be used directly.  
 /// ```typescript
-/// type FileUri = any
+/// type FileUri = {
+///     uri: string, // This can use for official tauri_plugin_fs as path
+///     documentTopTreeUri: string | null
+/// }
+/// 
+/// // But if possible, you should use the following type.  
 /// type FileUri = string
 /// ```
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
@@ -153,6 +155,49 @@ impl PersistedUriPermission {
 
     pub fn is_dir(&self) -> bool {
         matches!(self, PersistedUriPermission::Dir { .. })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Size {
+    pub width: u32,
+    pub height: u32
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[non_exhaustive]
+pub enum DecodeOption {
+
+    /// - Loss less
+    /// - Support transparency
+    Png,
+
+    /// - Lossy
+    /// - Unsupport transparency
+    Jpeg,
+
+    /// - Lossy (**Not loss less**)
+    /// - Support transparency
+    Webp,
+
+    /// - Lossy
+    /// - Unsupport transparency
+    JpegWith {
+
+        /// Range is `0.0 ~ 1.0`  
+        /// 0.0 means compress for the smallest size.  
+        /// 1.0 means compress for max visual quality.  
+        quality: f32
+    },
+
+    /// - Lossy
+    /// - Support transparency
+    WebpWith {
+        
+        /// Range is `0.0 ~ 1.0`  
+        /// 0.0 means compress for the smallest size.  
+        /// 1.0 means compress for max visual quality.  
+        quality: f32
     }
 }
 
