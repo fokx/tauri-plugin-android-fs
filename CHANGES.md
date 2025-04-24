@@ -1,6 +1,6 @@
 # Version 9.2.0
 - Add `AndroidFs::get_thumbnail`
-- Add `AndroidFs::get_thumbnail`_to
+- Add `AndroidFs::get_thumbnail_to`
 - Fix an issue where the UI would freeze and become ANR error if the response was too long when using `AndroidFs::open_file`.
 - Update documentation.
 
