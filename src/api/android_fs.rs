@@ -827,6 +827,21 @@ impl<R: tauri::Runtime> AndroidFs<R> {
         })
     }
 
+    /// Acquire manage external storage permission.
+    ///
+    /// # Support
+    /// All.
+    pub fn acquire_manage_external_storage(&self) -> crate::Result<()> {
+        on_android!({
+            impl_de!(struct Res { value: bool });
+
+            self.api
+                .run_mobile_plugin::<Res>("acquireManageExternalStorage", "")
+                .map(|_| ())
+                .map_err(Into::into)
+        })
+    }
+
     /// Please use [`AndroidFs::show_manage_dir_dialog`] instead.
     #[deprecated = "Confusing name. Please use show_manage_dir_dialog instead."]
     #[warn(deprecated)]

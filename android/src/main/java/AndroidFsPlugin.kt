@@ -1,5 +1,5 @@
 package com.plugin.android_fs
-
+import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
@@ -23,6 +23,7 @@ import app.tauri.Logger
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
+import app.tauri.annotation.Permission
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSArray
@@ -34,6 +35,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.min
 import java.io.OutputStream
+import android.Manifest
 
 @InvokeArg
 class GetFileDescriptorArgs {
@@ -191,7 +193,11 @@ class ViewFileArgs {
     lateinit var uri: FileUri
 }
 
-@TauriPlugin
+@TauriPlugin(
+    permissions = [
+        Permission(strings = [Manifest.permission.MANAGE_EXTERNAL_STORAGE], alias = "manageExternalStorage")
+    ]
+)
 class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
     private val isVisualMediaPickerAvailable = PickVisualMedia.isPhotoPickerAvailable()
     private val documentFileController = DocumentFileController(activity)
@@ -883,6 +889,26 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
             startActivityForResult(invoke, intent, "handleShowManageDirDialog")
         } catch (ex: Exception) {
             val message = ex.message ?: "Failed to invoke showManageDirDialog."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun acquireManageExternalStorage(invoke: Invoke) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val intent = Intent(ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                activity.applicationContext.startActivity(intent)
+                invoke.resolve()
+            } else {
+                // Handle older Android versions
+            }
+
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke viewFile."
             Logger.error(message)
             invoke.reject(message)
         }
