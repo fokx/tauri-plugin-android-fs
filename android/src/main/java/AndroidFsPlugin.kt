@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -15,6 +17,8 @@ import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVis
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.core.app.ShareCompat
 import android.webkit.MimeTypeMap
+import android.media.MediaMetadataRetriever
+import android.media.MediaMetadataRetriever.OPTION_PREVIOUS_SYNC
 import app.tauri.Logger
 import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
@@ -28,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.min
 import java.io.OutputStream
 
 @InvokeArg
@@ -621,6 +626,21 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
                 height
             )
 
+            val srcUri = Uri.parse(args.src.uri)
+            if (img == null && srcUri.scheme == "content") {
+                try {
+                    val mimeType = getFileController(args.src).getMimeType(args.src)
+                    if (mimeType != null && mimeType.startsWith("video/")) {
+                        img = getVideoThumbnail(
+                            srcUri, 
+                            width, 
+                            height
+                        )
+                    }
+                }
+                catch (ignore: Exception) {}
+            }
+
             if (img == null) {
                 return false
             }
@@ -654,6 +674,39 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
             out?.close()
             thumbnail?.recycle()
             img?.recycle()
+        }
+    }
+
+    private fun getVideoThumbnail(uri: Uri, width: Int, height: Int): Bitmap? {
+        MediaMetadataRetriever().use { mediaMetadataRetriever ->
+            mediaMetadataRetriever.setDataSource(activity, uri)
+            val thumbnailBytes = mediaMetadataRetriever.embeddedPicture
+            thumbnailBytes?.let {
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(it))
+                } else {
+                    BitmapFactory.decodeByteArray(it, 0, it.size)
+                }
+            }
+
+            val vw = mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toFloat()
+            val vh = mediaMetadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toFloat()
+            if (vw != null && vh != null && (width < vw || height < vh)) {
+                val wr = width.toFloat() / vw
+                val hr = height.toFloat() / vh
+                val ratio = min(wr, hr)
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    return mediaMetadataRetriever.getScaledFrameAtTime(
+                        -1,
+                        OPTION_PREVIOUS_SYNC,
+                        (vw * ratio).toInt(),
+                        (vh * ratio).toInt()
+                    )
+                }
+            }
+
+            return mediaMetadataRetriever.frameAtTime
         }
     }
 

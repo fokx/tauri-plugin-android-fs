@@ -1,3 +1,6 @@
+# Version 9.2.1
+- Fix an issue where video thumbnails may not be retrieved in `AndroidFs::get_thumbnail_to` and `AndroidFs::get_thumbnail`
+
 # Version 9.2.0
 - Add `AndroidFs::get_thumbnail`
 - Add `AndroidFs::get_thumbnail_to`
