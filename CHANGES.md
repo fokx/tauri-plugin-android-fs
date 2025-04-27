@@ -1,3 +1,7 @@
+# Version 9.3.0
+- Add `ImageFormat`
+- Deprecate `DecodeOption`
+
 # Version 9.2.1
 - Fix an issue where video thumbnails may not be retrieved in `AndroidFs::get_thumbnail_to` and `AndroidFs::get_thumbnail`
 
