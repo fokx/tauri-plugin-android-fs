@@ -1,5 +1,6 @@
 package com.plugin.android_fs
 import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+import android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
@@ -191,6 +192,11 @@ class ShareFileArgs {
 @InvokeArg
 class ViewFileArgs {
     lateinit var uri: FileUri
+}
+
+@InvokeArg
+class AppManageExternalUrlArgs {
+    lateinit var appName: String
 }
 
 @TauriPlugin(
@@ -899,6 +905,27 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val intent = Intent(ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                activity.applicationContext.startActivity(intent)
+                invoke.resolve()
+            } else {
+                // Handle older Android versions
+            }
+
+        }
+        catch (ex: Exception) {
+            val message = ex.message ?: "Failed to invoke viewFile."
+            Logger.error(message)
+            invoke.reject(message)
+        }
+    }
+
+    @Command
+    fun acquireAppManageExternalStorage(invoke: Invoke) {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val uri = Uri.parse("package:${activity.packageName}")
+                val intent =Intent(ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 activity.applicationContext.startActivity(intent)
                 invoke.resolve()
