@@ -50,7 +50,7 @@ Then, there are three main ways to manipulate files:
 Opens the file/folder picker to read and write user-selected entries.
 
 ```rust
-use tauri_plugin_android_fs::{AndroidFsExt, DecodeOption, FileAccessMode, Size};
+use tauri_plugin_android_fs::{AndroidFsExt, FileAccessMode, ImageFormat, Size};
 
 fn file_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result<()> {
     let api = app.android_fs();
@@ -72,7 +72,7 @@ fn file_picker_example(app: tauri::AppHandle) -> tauri_plugin_android_fs::Result
             let file_thumbnail = api.get_thumbnail(
                 &uri, 
                 Size { width: 200, height: 200}, 
-                DecodeOption::Jpeg
+                ImageFormat::Jpeg
             )?;
 
             {

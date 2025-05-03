@@ -444,7 +444,7 @@ impl<R: tauri::Runtime> AndroidFs<R> {
         src: &FileUri,
         dest: &FileUri,
         preferred_size: Size,
-        decode: DecodeOption,
+        format: ImageFormat,
     ) -> crate::Result<bool> {
 
         on_android!({
@@ -458,7 +458,7 @@ impl<R: tauri::Runtime> AndroidFs<R> {
             });
             impl_de!(struct Res { value: bool });
 
-            let (quality, format) = match decode {
+            let (quality, format) = match format {
                 DecodeOption::Png => (1.0, "Png"),
                 DecodeOption::Jpeg => (0.75, "Jpeg"),
                 DecodeOption::Webp => (0.7, "Webp"),
@@ -494,9 +494,9 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     /// but never more than double the requested size. 
     /// In any case, the aspect ratio is maintained.
     /// 
-    /// - ***decode*** :  
+    /// - ***format*** :  
     /// Thumbnail image format.  
-    /// [`DecodeOption::Jpeg`] is recommended. 
+    /// [`ImageFormat::Jpeg`] is recommended. 
     /// If you need transparency, use others.
     /// 
     /// # Support
@@ -505,7 +505,7 @@ impl<R: tauri::Runtime> AndroidFs<R> {
         &self,
         uri: &FileUri,
         preferred_size: Size,
-        decode: DecodeOption,
+        format: ImageFormat,
     ) -> crate::Result<Option<Vec<u8>>> {
 
         on_android!({
@@ -527,7 +527,7 @@ impl<R: tauri::Runtime> AndroidFs<R> {
 
             std::fs::File::create(&tmp_file_path)?;
 
-            let result = self.get_thumbnail_to(uri, &(&tmp_file_path).into(), preferred_size, decode)
+            let result = self.get_thumbnail_to(uri, &(&tmp_file_path).into(), preferred_size, format)
                 .and_then(|ok| {
                     if (ok) {
                         std::fs::read(&tmp_file_path)
@@ -646,7 +646,8 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     /// Indicate the initial location of dialog.  
     /// System will do its best to launch the dialog in the specified entry 
     /// if it's a directory, or the directory that contains the specified file if not.  
-    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
+    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.
+    /// There is no need to use this if there is no special reason.  
     /// This must be a URI taken from following :   
     ///     - [`AndroidFs::resolve_initial_location`]
     ///     - [`AndroidFs::show_open_file_dialog`]
@@ -794,10 +795,11 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     /// 
     /// # Args  
     /// - ***initial_location*** :  
-    /// Indicate the initial location of dialog.  
+    /// Indicate the initial location of dialog.    
     /// System will do its best to launch the dialog in the specified entry 
     /// if it's a directory, or the directory that contains the specified file if not.  
-    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
+    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific. 
+    /// There is no need to use this if there is no special reason.  
     /// This must be a URI taken from following :   
     ///     - [`AndroidFs::resolve_initial_location`]
     ///     - [`AndroidFs::show_open_file_dialog`]
@@ -870,7 +872,8 @@ impl<R: tauri::Runtime> AndroidFs<R> {
     /// Indicate the initial location of dialog.  
     /// System will do its best to launch the dialog in the specified entry 
     /// if it's a directory, or the directory that contains the specified file if not.  
-    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.  
+    /// If this is missing or failed to resolve the desired initial location, the initial location is system specific.
+    /// There is no need to use this if there is no special reason.  
     /// This must be a URI taken from following :   
     ///     - [`AndroidFs::resolve_initial_location`]
     ///     - [`AndroidFs::show_open_file_dialog`]

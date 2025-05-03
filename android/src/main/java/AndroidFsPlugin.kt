@@ -651,7 +651,7 @@ class AndroidFsPlugin(private val activity: Activity) : Plugin(activity) {
                 return false
             }
 
-            thumbnail = if (img.width >= width * 2 || img.height >= height * 2) {
+            thumbnail = if (img.width > (width * 2) + 3 || img.height > (height * 2) + 3) {
                 val ratio = minOf(width.toFloat() / img.width, height.toFloat() / img.height)
                 Bitmap.createScaledBitmap(
                     img,

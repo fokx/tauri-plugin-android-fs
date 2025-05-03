@@ -164,9 +164,12 @@ pub struct Size {
     pub height: u32
 }
 
+#[deprecated(note = "Wrong name. Use ImageFormat instead")]
+pub type DecodeOption = ImageFormat;
+
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[non_exhaustive]
-pub enum DecodeOption {
+pub enum ImageFormat {
 
     /// - Loss less
     /// - Support transparency
